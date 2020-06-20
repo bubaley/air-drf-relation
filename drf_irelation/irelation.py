@@ -1,3 +1,7 @@
+"""
+DRF Improved Relations
+"""
+
 from rest_framework.relations import PrimaryKeyRelatedField
 from rest_framework.exceptions import ValidationError, NotFound
 from rest_framework.permissions import SAFE_METHODS

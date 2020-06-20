@@ -1,2 +1,5 @@
 venv
-pyproject.toml
+.DS_Store
+__pycache__/
+dist/
+drf_irelation.egg-info/
