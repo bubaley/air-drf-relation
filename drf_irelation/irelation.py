@@ -107,7 +107,8 @@ class RelatedField(PrimaryKeyRelatedField):
         self.fail_on_null = kwargs.pop('fail_on_null', True)
         self.fail_on_not_found = kwargs.pop('fail_on_not_found', True)
         self.queryset = kwargs.pop('queryset', None)
-        if not self.queryset and self.serializer:
+        self.read_only = kwargs.get('read_only', False)
+        if not self.queryset and self.serializer and not self.read_only:
             self.queryset = self.serializer.Meta.model.objects
         super().__init__(**kwargs)
 
