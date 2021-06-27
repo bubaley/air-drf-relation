@@ -9,6 +9,7 @@ from air_drf_relation.fields import RelatedField
 class AirModelSerializer(serializers.ModelSerializer):
     def __init__(self, *args, **kwargs):
         self.extra_kwargs = self._get_extra_kwargs(extra_kwargs=kwargs.pop('extra_kwargs', {}))
+        self.related_fields = self._get_related_fields()
         self._update_extra_kwargs_in_fields()
         super(AirModelSerializer, self).__init__(*args, **kwargs)
         self._update_related_fields()
@@ -22,11 +23,11 @@ class AirModelSerializer(serializers.ModelSerializer):
         extra_kwargs = {}
 
     def _update_related_fields(self):
-        related_fields = self._get_related_fields()
-        if not len(related_fields):
-            return
         info = model_meta.get_field_info(self.Meta.model)
-        for field_name, field in related_fields.items():
+        for field_name, field in self.related_fields.items():
+            field.parent = self
+            if not isinstance(field, RelatedField):
+                continue
             model_field: ForeignKey = info.relations[field_name].model_field
             field_kwargs = field._kwargs
             if not model_field.editable:
@@ -39,13 +40,9 @@ class AirModelSerializer(serializers.ModelSerializer):
                     field.allow_null = True
 
     def _filter_queryset_by_fields(self):
-        for field_name, field in self.fields.items():
-            field_type = type(field)
-            if field_type not in (RelatedField, PrimaryKeyRelatedField):
-                continue
+        for field_name, field in self.related_fields.items():
             function_name = None
-
-            if field_type is RelatedField:
+            if isinstance(field, RelatedField):
                 if field.queryset_function_disabled:
                     return
                 function_name = field.queryset_function_name
@@ -57,7 +54,7 @@ class AirModelSerializer(serializers.ModelSerializer):
     def _get_related_fields(self):
         related_fields = dict()
         for field_name, field in self.fields.items():
-            if isinstance(field, RelatedField):
+            if type(field) in (RelatedField, PrimaryKeyRelatedField):
                 related_fields[field_name] = field
         return related_fields
 

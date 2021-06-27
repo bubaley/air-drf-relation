@@ -144,6 +144,6 @@ class TestMagazineObjects(TestCase):
 
     def test_special_creation(self):
         data = {'name': 'default', 'author': self.author2.pk, 'city': str(self.city.pk)}
-        serializer = MagazineSpecialSerializer(data=data)
+        serializer = MagazineSpecialSerializer(data=data, context={'user': 1})
         serializer.is_valid()
         self.assertEqual(len(serializer.errors), 1)

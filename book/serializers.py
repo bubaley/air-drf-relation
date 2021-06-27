@@ -1,3 +1,5 @@
+from rest_framework import serializers
+
 from air_drf_relation.serializers import AirModelSerializer
 from air_drf_relation.fields import RelatedField
 from .models import Author, Book, City, Magazine
@@ -46,6 +48,8 @@ class MagazineSerializer(AirModelSerializer):
 
 
 class MagazineSpecialSerializer(AirModelSerializer):
+    # city = CitySerializer()
+
     class Meta:
         model = Magazine
         fields = ('id', 'name', 'author', 'city')
