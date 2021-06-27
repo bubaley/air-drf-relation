@@ -1,0 +1,3 @@
+recursive-exclude core *
+recursive-exclude book *
+recursive-include air_drf_relation *
