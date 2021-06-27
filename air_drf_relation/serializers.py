@@ -1,3 +1,4 @@
+from rest_framework.relations import PrimaryKeyRelatedField
 from rest_framework.utils import model_meta
 from rest_framework import serializers
 from django.db.models import ForeignKey
@@ -11,6 +12,7 @@ class AirModelSerializer(serializers.ModelSerializer):
         self._update_extra_kwargs_in_fields()
         super(AirModelSerializer, self).__init__(*args, **kwargs)
         self._update_related_fields()
+        self._filter_queryset_by_fields()
 
     class Meta:
         model = None
@@ -20,7 +22,7 @@ class AirModelSerializer(serializers.ModelSerializer):
         extra_kwargs = {}
 
     def _update_related_fields(self):
-        related_fields = self.get_related_fields()
+        related_fields = self._get_related_fields()
         if not len(related_fields):
             return
         info = model_meta.get_field_info(self.Meta.model)
@@ -36,18 +38,23 @@ class AirModelSerializer(serializers.ModelSerializer):
                 if field_kwargs.get('allow_null') is None:
                     field.allow_null = True
 
-            self.set_queryset_function(field=field)
+    def _filter_queryset_by_fields(self):
+        for field_name, field in self.fields.items():
+            field_type = type(field)
+            if field_type not in (RelatedField, PrimaryKeyRelatedField):
+                continue
+            function_name = None
 
-    def set_queryset_function(self, field: RelatedField):
-        if field.queryset_function_disabled:
-            return
-        function_name = field.queryset_function_name
-        if not function_name:
-            function_name = f'queryset_{field.source}'
-        if hasattr(self.__class__, function_name) and callable(getattr(self.__class__, function_name)):
-            field.queryset = getattr(self.__class__, function_name)(self=self.__class__, queryset=field.queryset)
+            if field_type is RelatedField:
+                if field.queryset_function_disabled:
+                    return
+                function_name = field.queryset_function_name
+            if not function_name:
+                function_name = f'queryset_{field.source}'
+            if hasattr(self.__class__, function_name) and callable(getattr(self.__class__, function_name)):
+                field.queryset = getattr(self.__class__, function_name)(self=self.__class__, queryset=field.queryset)
 
-    def get_related_fields(self):
+    def _get_related_fields(self):
         related_fields = dict()
         for field_name, field in self.fields.items():
             if isinstance(field, RelatedField):

@@ -4,7 +4,7 @@ from django.test import TestCase
 from rest_framework.utils.serializer_helpers import ReturnDict
 
 from .models import Author, Book, City
-from .serializers import BookSerializer, DefaultBookSerializer, MagazineSerializer
+from .serializers import BookSerializer, DefaultBookSerializer, MagazineSerializer, MagazineSpecialSerializer
 
 
 class TestBookObjects(TestCase):
@@ -112,6 +112,7 @@ class TestBookObjects(TestCase):
 class TestMagazineObjects(TestCase):
     def setUp(self) -> None:
         self.author = Author.objects.create(name='author')
+        self.author2 = Author.objects.create(name='inactive author', active=False)
         self.city = City.objects.create(name='city')
 
     def test_check_required_fields(self):
@@ -140,3 +141,9 @@ class TestMagazineObjects(TestCase):
         instance = serializer.save()
         self.assertEqual(instance.author, self.author)
         self.assertEqual(instance.city, self.city)
+
+    def test_special_creation(self):
+        data = {'name': 'default', 'author': self.author2.pk, 'city': str(self.city.pk)}
+        serializer = MagazineSpecialSerializer(data=data)
+        serializer.is_valid()
+        self.assertEqual(len(serializer.errors), 1)

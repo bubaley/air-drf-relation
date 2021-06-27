@@ -43,3 +43,12 @@ class MagazineSerializer(AirModelSerializer):
     class Meta:
         model = Magazine
         fields = ('id', 'name', 'author', 'city')
+
+
+class MagazineSpecialSerializer(AirModelSerializer):
+    class Meta:
+        model = Magazine
+        fields = ('id', 'name', 'author', 'city')
+
+    def queryset_author(self, queryset):
+        return queryset.filter(active=True)
