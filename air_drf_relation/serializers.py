@@ -52,7 +52,7 @@ class AirModelSerializer(serializers.ModelSerializer):
             if not function_name:
                 function_name = f'queryset_{field.source}'
             if hasattr(self.__class__, function_name) and callable(getattr(self.__class__, function_name)):
-                field.queryset = getattr(self.__class__, function_name)(self=self.__class__, queryset=field.queryset)
+                field.queryset = getattr(self.__class__, function_name)(self=self, queryset=field.queryset)
 
     def _get_related_fields(self):
         related_fields = dict()
