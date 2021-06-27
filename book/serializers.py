@@ -48,7 +48,7 @@ class MagazineSerializer(AirModelSerializer):
 
 
 class MagazineSpecialSerializer(AirModelSerializer):
-    # city = CitySerializer()
+    city = RelatedField(CitySerializer)
 
     class Meta:
         model = Magazine

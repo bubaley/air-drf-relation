@@ -25,7 +25,7 @@ class AirModelSerializer(serializers.ModelSerializer):
     def _update_related_fields(self):
         info = model_meta.get_field_info(self.Meta.model)
         for field_name, field in self.related_fields.items():
-            field.parent = self
+            # field.parent = self
             if not isinstance(field, RelatedField):
                 continue
             model_field: ForeignKey = info.relations[field_name].model_field

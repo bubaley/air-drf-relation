@@ -34,5 +34,5 @@ class RelatedField(PrimaryKeyRelatedField):
 
     def to_representation(self, value):
         if not self.pk_only:
-            return self.serializer(value).data
+            return self.serializer(value, context=self.context).data
         return value.pk
