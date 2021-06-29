@@ -2,6 +2,7 @@ from rest_framework.relations import PrimaryKeyRelatedField
 from rest_framework.utils import model_meta
 from rest_framework import serializers
 from django.db.models import ForeignKey
+from copy import deepcopy
 
 from air_drf_relation.fields import RelatedField
 
@@ -12,7 +13,7 @@ class AirModelSerializer(serializers.ModelSerializer):
         self.related_fields = self._get_related_fields()
         self._update_extra_kwargs_in_fields()
         super(AirModelSerializer, self).__init__(*args, **kwargs)
-        self._update_related_fields()
+        self._update_fields()
         self._filter_queryset_by_fields()
 
     class Meta:
@@ -22,10 +23,13 @@ class AirModelSerializer(serializers.ModelSerializer):
         write_only_fields = ()
         extra_kwargs = {}
 
-    def _update_related_fields(self):
+    def _update_fields(self):
         info = model_meta.get_field_info(self.Meta.model)
-        for field_name, field in self.related_fields.items():
-            # field.parent = self
+        hidden_fields = [field_name for field_name, field in self.fields.items() if
+                         hasattr(field, 'hidden') and getattr(field, 'hidden', True)]
+        for el in hidden_fields:
+            del self.fields[el]
+        for field_name, field in self.fields.items():
             if not isinstance(field, RelatedField):
                 continue
             model_field: ForeignKey = info.relations[field_name].model_field
@@ -62,16 +66,23 @@ class AirModelSerializer(serializers.ModelSerializer):
         if not hasattr(self.Meta, 'extra_kwargs'):
             return extra_kwargs
 
-        if not len(extra_kwargs):
-            return self.Meta.extra_kwargs
+        meta_extra_kwargs = deepcopy(self.Meta.extra_kwargs)
+        for field_name, field in self.Meta.extra_kwargs.items():
+            field.pop('pk_only', None)
+            field.pop('hidden', None)
 
-        meta_extra_kwargs = self.Meta.extra_kwargs
+        if not len(extra_kwargs):
+            return meta_extra_kwargs
+
+        meta_keys = list(meta_extra_kwargs.keys())
         for key, value in extra_kwargs.items():
             current_meta_kwargs = meta_extra_kwargs.get(key)
             if current_meta_kwargs:
                 extra_kwargs[key] = {**current_meta_kwargs, **value}
-            else:
-                extra_kwargs[key] = value
+                meta_keys.remove(key)
+        for meta_key in meta_keys:
+            extra_kwargs[meta_key] = meta_extra_kwargs[meta_key]
+        return extra_kwargs
 
     def _update_extra_kwargs_in_fields(self):
         for key, value in self.extra_kwargs.items():

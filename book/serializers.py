@@ -41,6 +41,17 @@ class BookReadOnlySerializer(AirModelSerializer):
         fields = ('uuid', 'name', 'author', 'city')
 
 
+class BookHiddenSerializer(AirModelSerializer):
+    author = RelatedField(AuthorSerializer, hidden=True)
+
+    class Meta:
+        model = Book
+        fields = ('uuid', 'name', 'author', 'city')
+        extra_kwargs = {
+            'name': {'hidden': True}
+        }
+
+
 class DefaultBookSerializer(AirModelSerializer):
     class Meta:
         model = Book

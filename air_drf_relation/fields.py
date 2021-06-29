@@ -8,6 +8,7 @@ class RelatedField(PrimaryKeyRelatedField):
     def __init__(self, serializer, **kwargs):
         self.serializer = serializer
         self.pk_only = kwargs.pop('pk_only', False)
+        self.hidden = kwargs.pop('hidden', False)
         self.queryset_function_name = kwargs.pop('queryset_function_name', None)
         self.queryset_function_disabled = kwargs.pop('queryset_function_disabled', False)
 
