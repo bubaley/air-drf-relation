@@ -4,7 +4,8 @@ from django.test import TestCase
 from rest_framework.utils.serializer_helpers import ReturnDict
 
 from .models import Author, Book, City
-from .serializers import BookSerializer, DefaultBookSerializer, MagazineSerializer, MagazineSpecialSerializer
+from .serializers import BookSerializer, DefaultBookSerializer, MagazineSerializer, MagazineSpecialSerializer, \
+    BookReadOnlySerializer
 
 
 class TestBookObjects(TestCase):
@@ -82,6 +83,16 @@ class TestBookObjects(TestCase):
         self.assertEqual(serializer.data['author'], None)
         self.assertEqual(serializer.data['city'], None)
 
+    def test_read_only_as_default_kwargs_creation(self):
+        data = {'name': 'read only as default kwargs', 'author': self.author.pk, 'city': str(self.city.pk)}
+        serializer = BookReadOnlySerializer(data=data)
+        serializer.is_valid(raise_exception=True)
+        instance = serializer.save()
+        self.assertEqual(instance.author, None)
+        self.assertEqual(instance.city, None)
+        self.assertEqual(serializer.data['author'], None)
+        self.assertEqual(serializer.data['city'], None)
+
     def test_queryset_creation(self):
         data = {'name': 'queryset', 'author': self.author3.pk, 'city': str(self.city3.pk)}
         serializer = BookSerializer(data=data)
@@ -145,6 +156,5 @@ class TestMagazineObjects(TestCase):
     def test_special_creation(self):
         data = {'name': 'default', 'author': self.author2.pk, 'city': str(self.city.pk)}
         serializer = MagazineSpecialSerializer(data=data, context={'user': 1})
-        print(serializer.fields.fields['city'])
         serializer.is_valid()
         self.assertEqual(len(serializer.errors), 1)

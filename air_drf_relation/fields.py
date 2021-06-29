@@ -7,14 +7,16 @@ from air_drf_relation.utils import get_related_object
 class RelatedField(PrimaryKeyRelatedField):
     def __init__(self, serializer, **kwargs):
         self.serializer = serializer
-
-        self.queryset = kwargs.pop('queryset', None)
         self.pk_only = kwargs.pop('pk_only', False)
         self.queryset_function_name = kwargs.pop('queryset_function_name', None)
         self.queryset_function_disabled = kwargs.pop('queryset_function_disabled', False)
 
-        if not self.queryset:
-            self.queryset = self.serializer.Meta.model.objects
+        if not kwargs.get('read_only'):
+            self.queryset = kwargs.pop('queryset', None)
+            if not self.queryset:
+                self.queryset = self.serializer.Meta.model.objects
+        else:
+            self.queryset_function_disabled = True
 
         super().__init__(**kwargs)
 

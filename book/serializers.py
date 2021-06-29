@@ -32,6 +32,15 @@ class BookSerializer(AirModelSerializer):
         fields = ('uuid', 'name', 'author', 'city')
 
 
+class BookReadOnlySerializer(AirModelSerializer):
+    author = RelatedField(AuthorSerializer, read_only=True)
+    city = RelatedField(CitySerializer, read_only=True)
+
+    class Meta:
+        model = Book
+        fields = ('uuid', 'name', 'author', 'city')
+
+
 class DefaultBookSerializer(AirModelSerializer):
     class Meta:
         model = Book
