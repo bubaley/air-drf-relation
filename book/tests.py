@@ -5,7 +5,7 @@ from rest_framework.utils.serializer_helpers import ReturnDict
 
 from .models import Author, Book, City
 from .serializers import BookSerializer, DefaultBookSerializer, MagazineSerializer, MagazineSpecialSerializer, \
-    BookReadOnlySerializer, BookHiddenSerializer
+    BookReadOnlySerializer, BookHiddenSerializer, BookActionKwargsSerializer
 
 
 class TestBookObjects(TestCase):
@@ -110,6 +110,22 @@ class TestBookObjects(TestCase):
         self.assertEqual(result['author'], None)
         self.assertEqual(result['name'], '')
         self.assertEqual(result['city'], None)
+
+    def test_action_kwargs(self):
+        pass
+        data = {'name': 'hidden', 'city': str(self.city.pk), 'author': self.author.pk}
+        serializer = BookActionKwargsSerializer(data=data, action='create')
+        serializer.is_valid(raise_exception=True)
+        instance = serializer.save()
+        self.assertEqual(instance.city, None)
+        self.assertEqual(instance.author, self.author)
+        self.assertEqual(serializer.data.get('city', False), False)
+
+        serializer = BookActionKwargsSerializer(data=data, action='second_create')
+        serializer.is_valid(raise_exception=True)
+        instance = serializer.save()
+        self.assertEqual(serializer.data.get('name', False), False)
+        self.assertEqual(instance.author, None)
 
     def test_queryset_creation(self):
         data = {'name': 'queryset', 'author': self.author3.pk, 'city': str(self.city3.pk)}

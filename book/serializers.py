@@ -52,6 +52,19 @@ class BookHiddenSerializer(AirModelSerializer):
         }
 
 
+class BookActionKwargsSerializer(AirModelSerializer):
+    author = RelatedField(AuthorSerializer)
+    city = RelatedField(CitySerializer)
+
+    class Meta:
+        model = Book
+        fields = ('uuid', 'name', 'author', 'city')
+        action_extra_kwargs = {
+            'create': {'city': {'hidden': True}},
+            'second_create': {'author': {'read_only': True}, 'name': {'hidden': True}},
+        }
+
+
 class DefaultBookSerializer(AirModelSerializer):
     class Meta:
         model = Book

@@ -9,9 +9,12 @@ from air_drf_relation.fields import RelatedField
 
 class AirModelSerializer(serializers.ModelSerializer):
     def __init__(self, *args, **kwargs):
+        self.action = kwargs.pop('action', None)
+        if not self.action:
+            self._set_action_from_view(kwargs=kwargs)
         self.extra_kwargs = self._get_extra_kwargs(extra_kwargs=kwargs.pop('extra_kwargs', {}))
-        self.related_fields = self._get_related_fields()
         self._update_extra_kwargs_in_fields()
+
         super(AirModelSerializer, self).__init__(*args, **kwargs)
         self._update_fields()
 
@@ -47,7 +50,8 @@ class AirModelSerializer(serializers.ModelSerializer):
                     field.allow_null = True
 
     def _filter_queryset_by_fields(self):
-        for field_name, field in self.related_fields.items():
+        related_fields = self._get_related_fields()
+        for field_name, field in related_fields.items():
             function_name = None
             if isinstance(field, RelatedField):
                 if field.queryset_function_disabled:
@@ -66,26 +70,20 @@ class AirModelSerializer(serializers.ModelSerializer):
         return related_fields
 
     def _get_extra_kwargs(self, extra_kwargs: dict):
-        if not hasattr(self.Meta, 'extra_kwargs'):
-            return extra_kwargs
+        meta_extra_kwargs = deepcopy(self.Meta.extra_kwargs) if hasattr(self.Meta, 'extra_kwargs') else {}
+        self._delete_custom_extra_kwargs_in_meta()
+        action_extra_kwargs = {}
+        if self.action and hasattr(self.Meta, 'action_extra_kwargs'):
+            action_extra_kwargs = deepcopy(self.Meta.action_extra_kwargs.get(self.action, {}))
 
-        meta_extra_kwargs = deepcopy(self.Meta.extra_kwargs)
-        for field_name, field in self.Meta.extra_kwargs.items():
-            field.pop('pk_only', None)
-            field.pop('hidden', None)
-
-        if not len(extra_kwargs):
-            return meta_extra_kwargs
-
-        meta_keys = list(meta_extra_kwargs.keys())
-        for key, value in extra_kwargs.items():
-            current_meta_kwargs = meta_extra_kwargs.get(key)
-            if current_meta_kwargs:
-                extra_kwargs[key] = {**current_meta_kwargs, **value}
-                meta_keys.remove(key)
-        for meta_key in meta_keys:
-            extra_kwargs[meta_key] = meta_extra_kwargs[meta_key]
-        return extra_kwargs
+        unique_field_names = list(extra_kwargs.keys()) + list(meta_extra_kwargs.keys()) + list(
+            action_extra_kwargs.keys())
+        unique_field_names = list(set(unique_field_names))
+        result_kwargs = {}
+        for name in unique_field_names:
+            result_kwargs[name] = {**meta_extra_kwargs.get(name, {}), **action_extra_kwargs.get(name, {}),
+                                   **extra_kwargs.get(name, {})}
+        return result_kwargs
 
     def _update_extra_kwargs_in_fields(self):
         for key, value in self.extra_kwargs.items():
@@ -94,3 +92,15 @@ class AirModelSerializer(serializers.ModelSerializer):
                 self.fields.fields[key]._kwargs = {**self.fields.fields[key]._kwargs, **value}
             except KeyError:
                 continue
+
+    def _delete_custom_extra_kwargs_in_meta(self):
+        if not hasattr(self.Meta, 'extra_kwargs'):
+            return
+        for field_name, field in self.Meta.extra_kwargs.items():
+            field.pop('pk_only', None)
+            field.pop('hidden', None)
+
+    def _set_action_from_view(self, kwargs):
+        view = kwargs.get('context', {}).get('view')
+        if view:
+            self.action = view.action
