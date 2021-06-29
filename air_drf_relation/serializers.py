@@ -14,7 +14,10 @@ class AirModelSerializer(serializers.ModelSerializer):
         self._update_extra_kwargs_in_fields()
         super(AirModelSerializer, self).__init__(*args, **kwargs)
         self._update_fields()
+
+    def is_valid(self, raise_exception=False):
         self._filter_queryset_by_fields()
+        super(AirModelSerializer, self).is_valid(raise_exception=raise_exception)
 
     class Meta:
         model = None
