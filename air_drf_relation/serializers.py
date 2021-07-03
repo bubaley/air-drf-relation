@@ -73,8 +73,16 @@ class AirModelSerializer(serializers.ModelSerializer):
         meta_extra_kwargs = deepcopy(self.Meta.extra_kwargs) if hasattr(self.Meta, 'extra_kwargs') else {}
         self._delete_custom_extra_kwargs_in_meta()
         action_extra_kwargs = {}
-        if self.action and hasattr(self.Meta, 'action_extra_kwargs'):
-            action_extra_kwargs = deepcopy(self.Meta.action_extra_kwargs.get(self.action, {}))
+        if hasattr(self.Meta, 'action_extra_kwargs') and self.action:
+            _action_extra_kwargs = deepcopy(self.Meta.action_extra_kwargs)
+            _current_actions = {}
+            for key, value in _action_extra_kwargs.items():
+                keys = key.replace(' ', '').split(',')
+                for current_key in keys:
+                    _current_actions[current_key] = value
+            action_extra_kwargs = _current_actions.get(self.action)
+            if not action_extra_kwargs:
+                action_extra_kwargs = _current_actions.get('_', {})
 
         unique_field_names = list(extra_kwargs.keys()) + list(meta_extra_kwargs.keys()) + list(
             action_extra_kwargs.keys())

@@ -1,11 +1,11 @@
-import uuid
+from uuid import uuid4, UUID
 
 from django.test import TestCase
 from rest_framework.utils.serializer_helpers import ReturnDict
 
 from .models import Author, Book, City
 from .serializers import BookSerializer, DefaultBookSerializer, MagazineSerializer, MagazineSpecialSerializer, \
-    BookReadOnlySerializer, BookHiddenSerializer, BookActionKwargsSerializer
+    BookReadOnlySerializer, BookHiddenSerializer, BookActionKwargsSerializer, CityWritablePkSerializer
 
 
 class TestBookObjects(TestCase):
@@ -44,7 +44,7 @@ class TestBookObjects(TestCase):
         extra_kwargs = {'author': {'pk_only': True}, 'city': {'pk_only': True}}
         data = BookSerializer(self.book, extra_kwargs=extra_kwargs).data
         self.assertEqual(type(data['author']), int)
-        self.assertEqual(type(data['city']), uuid.UUID)
+        self.assertEqual(type(data['city']), UUID)
 
     def test_required_creation(self):
         data = {'name': 'required and allow null creation'}
@@ -112,7 +112,6 @@ class TestBookObjects(TestCase):
         self.assertEqual(result['city'], None)
 
     def test_action_kwargs(self):
-        pass
         data = {'name': 'hidden', 'city': str(self.city.pk), 'author': self.author.pk}
         serializer = BookActionKwargsSerializer(data=data, action='create')
         serializer.is_valid(raise_exception=True)
@@ -192,3 +191,18 @@ class TestMagazineObjects(TestCase):
         serializer = MagazineSpecialSerializer(data=data, context={'user': 1})
         serializer.is_valid()
         self.assertEqual(len(serializer.errors), 1)
+
+    def test_writable_pk(self):
+        data = {'uuid': None, 'name': 'writable pk'}
+        actions = ['create', 'second_action']
+        for action in actions:
+            data['uuid'] = str(uuid4())
+            serializer = CityWritablePkSerializer(data=data, action=action)
+            serializer.is_valid(raise_exception=True)
+            instance = serializer.save()
+            self.assertEqual(str(instance.uuid), data['uuid'])
+
+        data['uuid'] = str(uuid4())
+        serializer = CityWritablePkSerializer(data=data, action='action_does_not_exists')
+        serializer.is_valid(raise_exception=True)
+        self.assertEqual(serializer.data.get('name', False), False)

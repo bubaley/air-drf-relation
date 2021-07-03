@@ -10,7 +10,7 @@ class Author(models.Model):
 
 class City(models.Model):
     id = None
-    uuid = models.UUIDField(primary_key=True, default=uuid4, editable=False)
+    uuid = models.UUIDField(primary_key=True, default=uuid4)
     name = models.CharField(max_length=128)
     active = models.BooleanField(default=True)
 

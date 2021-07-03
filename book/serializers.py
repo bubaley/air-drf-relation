@@ -89,3 +89,14 @@ class MagazineSpecialSerializer(AirModelSerializer):
 
     def queryset_author(self, queryset):
         return queryset.filter(active=True)
+
+
+class CityWritablePkSerializer(AirModelSerializer):
+    class Meta:
+        model = City
+        fields = ('uuid', 'name')
+        read_only_fields = ('uuid',)
+        action_extra_kwargs = {
+            'create,second_action': {'uuid': {'read_only': False}},
+            '_': {'name': {'hidden': True}}
+        }
