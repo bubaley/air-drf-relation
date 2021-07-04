@@ -2,7 +2,7 @@ from rest_framework import serializers
 
 from air_drf_relation.serializers import AirModelSerializer
 from air_drf_relation.fields import RelatedField
-from .models import Author, Book, City, Magazine
+from .models import Author, Book, City, Magazine, Genre
 
 
 class AuthorSerializer(AirModelSerializer):
@@ -100,3 +100,17 @@ class CityWritablePkSerializer(AirModelSerializer):
             'create,second_action': {'uuid': {'read_only': False}},
             '_': {'name': {'hidden': True}}
         }
+
+
+class GenreSerializer(AirModelSerializer):
+    class Meta:
+        model = Genre
+        fields = ('id', 'name')
+
+
+class BookWithGenreSerializer(AirModelSerializer):
+    genres = RelatedField(GenreSerializer, many=True)
+
+    class Meta:
+        model = Book
+        fields = ('id', 'genres', 'name')

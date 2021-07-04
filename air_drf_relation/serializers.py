@@ -5,20 +5,55 @@ from django.db.models import ForeignKey
 from copy import deepcopy
 
 from air_drf_relation.fields import RelatedField
+from air_drf_relation.nested_fields_factory import NestedSaveFactory
 
 
 class AirModelSerializer(serializers.ModelSerializer):
     def __init__(self, *args, **kwargs):
         self.action = kwargs.pop('action', None)
+        self.nested_save_fields = self._get_nested_save_fields()
+        self.nested_save_factory: NestedSaveFactory = None
         if not self.action:
             self._set_action_from_view(kwargs=kwargs)
         self.extra_kwargs = self._get_extra_kwargs(extra_kwargs=kwargs.pop('extra_kwargs', {}))
         self._update_extra_kwargs_in_fields()
-
         super(AirModelSerializer, self).__init__(*args, **kwargs)
+        self._set_nested_save_factory()
         self._update_fields()
 
+    def create_with_nested_fields(self, validated_data):
+        self.nested_save_factory.set_data(validated_data=validated_data)
+        instance = super(AirModelSerializer, self).create(validated_data=validated_data)
+        self.nested_save_factory.instance = instance
+        self.nested_save_factory.created = True
+        self.nested_save_factory.save_nested_fields()
+        return instance
+
+    def update_with_nested_fields(self, instance, validated_data):
+        self.nested_save_factory.set_data(instance=instance, validated_data=validated_data)
+        instance = super(AirModelSerializer, self).update(instance=instance, validated_data=validated_data)
+        self.nested_save_factory.instance = instance
+        self.nested_save_factory.created = False
+        self.nested_save_factory.save_nested_fields()
+        return instance
+
+    def create(self, validated_data):
+        if self.nested_save_factory:
+            return self.create_with_nested_fields(validated_data=validated_data)
+        else:
+            return super(AirModelSerializer, self).create(validated_data=validated_data)
+
+    def update(self, instance, validated_data):
+        if self.nested_save_factory:
+            return self.update_with_nested_fields(validated_data=validated_data, instance=instance)
+        else:
+            return super(AirModelSerializer, self).update(instance=instance, validated_data=validated_data)
+
     def is_valid(self, raise_exception=False):
+        if self.nested_save_factory:
+            for el in self.nested_save_factory.nested_fields:
+                field = self.fields.fields[el.field_name].child.fields.fields[el.reverse_field_name]
+                setattr(field, 'read_only', True)
         self._filter_queryset_by_fields()
         super(AirModelSerializer, self).is_valid(raise_exception=raise_exception)
 
@@ -112,3 +147,9 @@ class AirModelSerializer(serializers.ModelSerializer):
         view = kwargs.get('context', {}).get('view')
         if view:
             self.action = view.action
+
+    def _get_nested_save_fields(self):
+        return getattr(self.Meta, 'nested_save_fields') if hasattr(self.Meta, 'nested_save_fields') else None
+
+    def _set_nested_save_factory(self):
+        self.nested_save_factory = NestedSaveFactory(serializer=self, nested_save_fields=self.nested_save_fields)

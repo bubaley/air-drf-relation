@@ -3,9 +3,10 @@ from uuid import uuid4, UUID
 from django.test import TestCase
 from rest_framework.utils.serializer_helpers import ReturnDict
 
-from .models import Author, Book, City
+from .models import Author, Book, City, Genre
 from .serializers import BookSerializer, DefaultBookSerializer, MagazineSerializer, MagazineSpecialSerializer, \
-    BookReadOnlySerializer, BookHiddenSerializer, BookActionKwargsSerializer, CityWritablePkSerializer
+    BookReadOnlySerializer, BookHiddenSerializer, BookActionKwargsSerializer, CityWritablePkSerializer, \
+    BookWithGenreSerializer
 
 
 class TestBookObjects(TestCase):
@@ -206,3 +207,15 @@ class TestMagazineObjects(TestCase):
         serializer = CityWritablePkSerializer(data=data, action='action_does_not_exists')
         serializer.is_valid(raise_exception=True)
         self.assertEqual(serializer.data.get('name', False), False)
+
+    def test_many_to_many_save(self):
+        Genre.objects.create(name='1', id=1)
+        Genre.objects.create(name='2', id=2)
+
+        data = {'name': 'many to many', 'genres': [1, {
+            'id': 2
+        }]}
+        serializer = BookWithGenreSerializer(data=data)
+        serializer.is_valid(raise_exception=True)
+        instance = serializer.save()
+        self.assertEqual(instance.genres.count(), 2)

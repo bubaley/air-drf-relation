@@ -15,6 +15,10 @@ class City(models.Model):
     active = models.BooleanField(default=True)
 
 
+class Genre(models.Model):
+    name = models.CharField(max_length=256)
+
+
 class Book(models.Model):
     id = None
     uuid = models.UUIDField(primary_key=True, default=uuid4, editable=False)
@@ -22,6 +26,7 @@ class Book(models.Model):
     author = models.ForeignKey(Author, related_name='books', on_delete=models.CASCADE, null=True)
     city = models.ForeignKey(City, related_name='books', on_delete=models.CASCADE, null=True)
     active = models.BooleanField(default=True)
+    genres = models.ManyToManyField(Genre, related_name='books')
 
 
 class Magazine(models.Model):
