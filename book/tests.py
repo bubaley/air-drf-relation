@@ -1,5 +1,6 @@
 from uuid import uuid4, UUID
 
+from django.contrib.auth.models import User
 from django.test import TestCase
 from rest_framework.utils.serializer_helpers import ReturnDict
 
@@ -153,6 +154,30 @@ class TestBookObjects(TestCase):
         self.assertEqual(instance.author, self.author)
         self.assertEqual(instance.city, self.city)
 
+    def test_many_to_many_save(self):
+        Genre.objects.create(name='1', id=1)
+        Genre.objects.create(name='2', id=2)
+
+        data = {'name': 'many to many', 'genres': [1, {
+            'id': 2
+        }]}
+        serializer = BookWithGenreSerializer(data=data)
+        serializer.is_valid(raise_exception=True)
+        instance = serializer.save()
+        self.assertEqual(instance.genres.count(), 2)
+
+    def test_set_user(self):
+        user = User.objects.create(email='demo@demo.com')
+        serializer = BookSerializer(data={'name': 'custom set user'}, user=user)
+        self.assertEqual(serializer.user, user)
+
+        class Request:
+            def __init__(self, user):
+                self.user = user
+
+        serializer = BookSerializer(data={'name': 'custom set user'}, context={'request': Request(user=user)})
+        self.assertEqual(serializer.user, user)
+
 
 class TestMagazineObjects(TestCase):
     def setUp(self) -> None:
@@ -207,15 +232,3 @@ class TestMagazineObjects(TestCase):
         serializer = CityWritablePkSerializer(data=data, action='action_does_not_exists')
         serializer.is_valid(raise_exception=True)
         self.assertEqual(serializer.data.get('name', False), False)
-
-    def test_many_to_many_save(self):
-        Genre.objects.create(name='1', id=1)
-        Genre.objects.create(name='2', id=2)
-
-        data = {'name': 'many to many', 'genres': [1, {
-            'id': 2
-        }]}
-        serializer = BookWithGenreSerializer(data=data)
-        serializer.is_valid(raise_exception=True)
-        instance = serializer.save()
-        self.assertEqual(instance.genres.count(), 2)
