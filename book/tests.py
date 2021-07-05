@@ -29,7 +29,7 @@ class TestBookObjects(TestCase):
         self.assertEqual(instance.city, None)
 
     def test_default_creation(self):
-        serializer = BookSerializer(data={'name': 'default creation'})
+        serializer = BookSerializer(data={'name': 'default creation'}, context=None)
         serializer.is_valid(raise_exception=True)
         instance: Book = serializer.save()
         self.assertEqual(instance.author, None)

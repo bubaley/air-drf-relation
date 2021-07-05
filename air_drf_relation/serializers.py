@@ -133,18 +133,18 @@ class AirModelSerializer(serializers.ModelSerializer):
             field.pop('hidden', None)
 
     def _set_action_from_view(self, kwargs):
-        try:
-            view = kwargs.get('context', {}).get('view')
-        except [AttributeError, KeyError]:
+        context = kwargs.get('context', None)
+        if not context:
             return
+        view = context.get('view')
         if view:
             self.action = view.action
 
     def _set_user_from_request(self, kwargs):
-        try:
-            request = kwargs.get('context', {}).get('request')
-        except [AttributeError, KeyError]:
+        context = kwargs.get('context', None)
+        if not context:
             return
+        request = context.get('request')
         if request and hasattr(request, 'user'):
             user = getattr(request, 'user')
             if user.is_authenticated:
