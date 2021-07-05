@@ -1,7 +1,11 @@
+from uuid import uuid4
+
 from django.test import TestCase
+from rest_framework.exceptions import ValidationError
 
 from school.models import School, Cabinet, Child
-from school.serializers import SchoolDefaultNestedSerializer, SchoolCustomNestedSerializer, SchoolAutoNestedSerializer
+from school.serializers import SchoolDefaultNestedSerializer, SchoolCustomNestedSerializer, SchoolAutoNestedSerializer, \
+    ParentCreateByPkSerializer
 
 
 class SchoolTest(TestCase):
@@ -31,3 +35,25 @@ class SchoolTest(TestCase):
         serializer.is_valid(raise_exception=True)
         instance: School = serializer.save()
         self.assertEqual(instance.cabinets.count(), 2)
+
+
+class ParentTest(TestCase):
+    def setUp(self) -> None:
+        self.uuid = str(uuid4())
+        self.data = {'uuid': self.uuid, 'name': 'demo name'}
+
+    def test_creation_with_unique_name(self):
+        serializer = ParentCreateByPkSerializer(data=self.data)
+        serializer.is_valid(raise_exception=True)
+        serializer.save()
+        serializer = ParentCreateByPkSerializer(data=self.data)
+        self.assertRaises(ValidationError, serializer.is_valid, raise_exception=True)
+
+    def test_creation_with_pk(self):
+        serializer = ParentCreateByPkSerializer(data=self.data, extra_kwargs={'uuid': {'read_only': False}})
+        serializer.is_valid(raise_exception=True)
+        instance = serializer.save()
+        self.assertEqual(str(instance.pk), self.uuid)
+
+        serializer = ParentCreateByPkSerializer(data=self.data, extra_kwargs={'uuid': {'read_only': False}})
+        self.assertRaises(ValidationError, serializer.is_valid, raise_exception=True)
