@@ -11,15 +11,15 @@
     1. [user](#user)
     2. [extra_kwargs](#extra_kwargs)
     3. [hidden_fields](#hidden_fields)
-    4. [Kwargs by actions](#kwargs_by_actions)
+    4. [Kwargs by actions](#kwargs-by-actions)
         1. [action_read_only_fields](#action_read_only_fields)
         2. [action_hidden_fields](#action_hidden_fields)
         3. [action_extra_kwargs](#action_extra_kwargs)
     5. [Filter nested querysets](#filter_nested_querysets)
-5. [Nested save objects](#nested_save_objects)
-    1. [Saving nested objects without NestedFactory](#saving_nested_objects_without_nestedfactory) 
-    2. [Saving nested objects with NestedFactory](#saving_nested_objects_with_nestedfactory)
-    3. [Using NestedFactory in AirModelSerializer](#using_nestedfactory_in_airmodelserializer)
+5. [Nested save objects](#nested-save-objects)
+    1. [Saving nested objects without NestedFactory](#saving-nested-objects-without-nestedfactory) 
+    2. [Saving nested objects with NestedFactory](#saving-nested-objects-with-nestedfactory)
+    3. [Using NestedFactory in AirModelSerializer](#using-nestedfactory-in-airmodelserializer)
 
 # Instalation
 
