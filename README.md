@@ -38,7 +38,7 @@ Used to extend the functionality of the `PrimaryKeyRelatedField`
 class BookSerializer(ModelSerializer):
     # author = PrimaryKeyRelatedField(queryset=Author.objects) - default usage
     author = RelatedField(AuthorSerializer)
-    city = RelatedField(AuthorSerializer)
+    city = RelatedField(CitySerializer)
 
     class Meta:
         model = Book
