@@ -3,9 +3,9 @@ from uuid import uuid4
 from django.test import TestCase
 from rest_framework.exceptions import ValidationError
 
-from school.models import School, Cabinet, Child
-from school.serializers import SchoolDefaultNestedSerializer, SchoolCustomNestedSerializer, SchoolAutoNestedSerializer, \
-    ParentCreateByPkSerializer
+from school.models import School
+from school.serializers import SchoolDefaultNestedSerializer, SchoolCustomNestedSerializer, \
+    SchoolAutoNestedSerializer, ParentCreateByPkSerializer
 
 
 class SchoolTest(TestCase):

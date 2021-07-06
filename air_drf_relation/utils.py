@@ -19,3 +19,10 @@ def get_related_object(data, queryset):
         for item in data:
             pks.append(get_pk_from_data(item, pk_name))
         return queryset.filter(pk__in=pks)
+
+
+def create_dict_from_list(values: list, value_data) -> dict:
+    result = dict()
+    for el in values:
+        result[el] = value_data
+    return result

@@ -4,6 +4,7 @@ from rest_framework import serializers
 from django.db.models import ForeignKey
 from copy import deepcopy
 
+from air_drf_relation.extra_kwargs import ExtraKwargsFactory
 from air_drf_relation.fields import RelatedField
 from air_drf_relation.nested_fields_factory import NestedSaveFactory
 
@@ -25,7 +26,7 @@ class AirModelSerializer(serializers.ModelSerializer):
             self._set_action_from_view(kwargs=kwargs)
         if not self.user:
             self._set_user_from_request(kwargs)
-        self.extra_kwargs = self._get_extra_kwargs(extra_kwargs=kwargs.pop('extra_kwargs', {}))
+        self.extra_kwargs = self._get_extra_kwargs(kwargs)
         self._update_extra_kwargs_in_fields()
         super(AirModelSerializer, self).__init__(*args, **kwargs)
         self._set_nested_save_factory()
@@ -93,29 +94,11 @@ class AirModelSerializer(serializers.ModelSerializer):
                 related_fields[field_name] = field
         return related_fields
 
-    def _get_extra_kwargs(self, extra_kwargs: dict):
-        meta_extra_kwargs = deepcopy(self.Meta.extra_kwargs) if hasattr(self.Meta, 'extra_kwargs') else {}
+    def _get_extra_kwargs(self, kwargs: dict):
+        data = {'extra_kwargs': kwargs.pop('extra_kwargs', {})}
+        extra_kwargs = ExtraKwargsFactory(meta=self.Meta, data=data, action=self.action).init().extra_kwargs
         self._delete_custom_extra_kwargs_in_meta()
-        action_extra_kwargs = {}
-        if hasattr(self.Meta, 'action_extra_kwargs') and self.action:
-            _action_extra_kwargs = deepcopy(self.Meta.action_extra_kwargs)
-            _current_actions = {}
-            for key, value in _action_extra_kwargs.items():
-                keys = key.replace(' ', '').split(',')
-                for current_key in keys:
-                    _current_actions[current_key] = value
-            action_extra_kwargs = _current_actions.get(self.action)
-            if not action_extra_kwargs:
-                action_extra_kwargs = _current_actions.get('_', {})
-
-        unique_field_names = list(extra_kwargs.keys()) + list(meta_extra_kwargs.keys()) + list(
-            action_extra_kwargs.keys())
-        unique_field_names = list(set(unique_field_names))
-        result_kwargs = {}
-        for name in unique_field_names:
-            result_kwargs[name] = {**meta_extra_kwargs.get(name, {}), **action_extra_kwargs.get(name, {}),
-                                   **extra_kwargs.get(name, {})}
-        return result_kwargs
+        return extra_kwargs
 
     def _update_extra_kwargs_in_fields(self):
         for key, value in self.extra_kwargs.items():
