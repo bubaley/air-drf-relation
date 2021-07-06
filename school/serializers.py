@@ -4,7 +4,7 @@ from rest_framework.serializers import ModelSerializer
 from .models import School, Cabinet, Parent
 
 
-class CabinetWithoutSchoolSerializer(AirModelSerializer):
+class CabinetWithoutSchoolSerializer(ModelSerializer):
     class Meta:
         model = Cabinet
         fields = ('id', 'name', 'code')
