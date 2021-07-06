@@ -22,7 +22,7 @@
 
 # About
 
-Adding functionality for dynamic and flexible work with field parameters in ModelSerializer.
+Adding functionality for dynamic and flexible work with ModelSerializer in Django REST framework.
 
 # RelatedField
 
