@@ -14,7 +14,7 @@
     4. [action_hidden_fields](#coming) - docs ccming soon
     5. [action_extra_kwargs](#coming) - docs coming soon
     6. [queryset_related_field](#coming) - docs coming soon
-    7. [nested_save_fields_fields](#coming) - docs coming soon
+    7. [nested_save_fields](#coming) - docs coming soon
 
 # Instalation
 
@@ -78,21 +78,21 @@ class BookSerializer(AirModelSerializer): # full example
     class Meta:
         model = Book
         fields = ('uuid', 'name', 'author', 'city')
-        hidden_fields = () # list of hidden fields
+        hidden_fields = ()
         read_only_fields = () # default read_only_fields
         extra_kwargs = {} # default extra_kwargs with support custom keys
-        action_read_only_fields = { # set read_only_fields by action
+        action_read_only_fields = {
             'create': {},
             '_': {} # used for other actions
         },
-        action_hidden_fields = { # set hidden_fields by action
+        action_hidden_fields = {
             'create': (),
-            '_': () # used for other actions
+            '_': ()
         }
-        action_extra_kwargs = { # set extra_kwargs by action
+        action_extra_kwargs = {
             'list': {},
-            '_': {} # used for other actions
+            '_': {}
         }
-        nested_save_fields = () # used for save nested objects
+        nested_save_fields = ()
         
 ```
