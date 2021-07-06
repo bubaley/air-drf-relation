@@ -22,11 +22,11 @@
 
 # About
 
-Add folder **models** in src. Add a file to the directory that will contain the model, for example **user**.
+Adding functionality for dynamic and flexible work with field parameters in ModelSerializer.
 
 # RelatedField
 
-Used to extend the functionality of the `PrimaryKeyRelatedField`
+Used to extend the functionality of the `PrimaryKeyRelatedField`.
 
 ```python
 class BookSerializer(ModelSerializer):
@@ -57,18 +57,18 @@ author = RelatedField(AuthorSerializer, pk_only=True)
 ```
 
 #### hidden
-Hidden fields are not used for serialization and validation. The data will be returned without fields. Usually used together in `AirModelSerializer`
+Hidden fields are not used for serialization and validation. The data will be returned without fields. Usually used together in `AirModelSerializer`.
 
 ```python
 author = RelatedField(AuthorSerializer, hidden=True)
 ```
 
 ### extra_kwargs
-You cannot use `hidden` and `pk_only` in ModelSerializer and with extra_kwargs
+You cannot use `hidden` and `pk_only` in ModelSerializer and with extra_kwargs.
 
 # AirModelSerializer
 
-Used to extend the functionality of the `ModelSerializer`
+Used to extend the functionality of the `ModelSerializer`.
 
 ```python
 class BookSerializer(AirModelSerializer): # full example
