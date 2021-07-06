@@ -27,7 +27,7 @@
 
 # About
 
-Add folder **models** in src. Add a file to the directory that will contain the model, for example **user**.
+`air-drf-relation` adds flexibility and convenience in working with ModelSerializer.
 
 # RelatedField
 
