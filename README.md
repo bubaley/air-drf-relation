@@ -15,6 +15,7 @@
         1. [action_read_only_fields](#action_read_only_fields)
         2. [action_hidden_fields](#action_hidden_fields)
         3. [action_extra_kwargs](#action_extra_kwargs)
+    4. [Priority extra_kwargs](#priority-extra_kwargs)
     5. [Filter nested querysets](#filter-nested-querysets)
 5. [Nested save objects](#nested-save-objects)
     1. [Saving nested objects without NestedFactory](#saving-nested-objects-without-nestedfactory) 
@@ -207,6 +208,15 @@ class BookSerializer(AirModelSerializer):
             }
         }
 ```
+
+## Priority extra_kwargs
+Below are the priorities of the extra_kwargs extension in ascending order
+1. extra_kwargs `in Meta`
+2. hidden_fields
+3. action_hidden_fields
+4. action_read_only_fields
+5. action_extra_kwargs
+6. extra_kwargs `manually transmitted`
 
 ## Filter nested querysets
 AirModelSerializer allows you to filter the queryset by nested fields.
