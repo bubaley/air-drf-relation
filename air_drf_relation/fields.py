@@ -4,7 +4,7 @@ from rest_framework.relations import PrimaryKeyRelatedField
 from air_drf_relation.utils import get_related_object
 
 
-class RelatedField(PrimaryKeyRelatedField):
+class AirRelatedField(PrimaryKeyRelatedField):
     def __init__(self, serializer, **kwargs):
         self.serializer = serializer
         self.pk_only = kwargs.pop('pk_only', False)

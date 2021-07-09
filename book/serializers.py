@@ -1,7 +1,5 @@
-from rest_framework import serializers
-
 from air_drf_relation.serializers import AirModelSerializer
-from air_drf_relation.fields import RelatedField
+from air_drf_relation.fields import AirRelatedField
 from .models import Author, Book, City, Magazine, Genre
 
 
@@ -18,8 +16,8 @@ class CitySerializer(AirModelSerializer):
 
 
 class BookSerializer(AirModelSerializer):
-    author = RelatedField(AuthorSerializer)
-    city = RelatedField(CitySerializer, queryset_function_name='filter_city_by_active')
+    author = AirRelatedField(AuthorSerializer)
+    city = AirRelatedField(CitySerializer, queryset_function_name='filter_city_by_active')
 
     def queryset_author(self, queryset):
         return queryset.filter(active=True)
@@ -33,8 +31,8 @@ class BookSerializer(AirModelSerializer):
 
 
 class BookReadOnlySerializer(AirModelSerializer):
-    author = RelatedField(AuthorSerializer, read_only=True)
-    city = RelatedField(CitySerializer, read_only=True)
+    author = AirRelatedField(AuthorSerializer, read_only=True)
+    city = AirRelatedField(CitySerializer, read_only=True)
 
     class Meta:
         model = Book
@@ -42,7 +40,7 @@ class BookReadOnlySerializer(AirModelSerializer):
 
 
 class BookHiddenSerializer(AirModelSerializer):
-    author = RelatedField(AuthorSerializer, hidden=True)
+    author = AirRelatedField(AuthorSerializer, hidden=True)
 
     class Meta:
         model = Book
@@ -53,8 +51,8 @@ class BookHiddenSerializer(AirModelSerializer):
 
 
 class BookActionKwargsSerializer(AirModelSerializer):
-    author = RelatedField(AuthorSerializer)
-    city = RelatedField(CitySerializer)
+    author = AirRelatedField(AuthorSerializer)
+    city = AirRelatedField(CitySerializer)
 
     class Meta:
         model = Book
@@ -72,8 +70,8 @@ class DefaultBookSerializer(AirModelSerializer):
 
 
 class MagazineSerializer(AirModelSerializer):
-    author = RelatedField(AuthorSerializer)
-    city = RelatedField(CitySerializer)
+    author = AirRelatedField(AuthorSerializer)
+    city = AirRelatedField(CitySerializer)
 
     class Meta:
         model = Magazine
@@ -81,7 +79,7 @@ class MagazineSerializer(AirModelSerializer):
 
 
 class MagazineSpecialSerializer(AirModelSerializer):
-    city = RelatedField(CitySerializer)
+    city = AirRelatedField(CitySerializer)
 
     class Meta:
         model = Magazine
@@ -109,7 +107,7 @@ class GenreSerializer(AirModelSerializer):
 
 
 class BookWithGenreSerializer(AirModelSerializer):
-    genres = RelatedField(GenreSerializer, many=True)
+    genres = AirRelatedField(GenreSerializer, many=True)
 
     class Meta:
         model = Book

@@ -1,28 +1,29 @@
-from django.contrib.auth.models import AnonymousUser
 from django.http import HttpRequest
-from rest_framework.request import Request
+from django.utils.functional import cached_property
+
 from .settings import air_drf_relation_settings
 
 
-class ContextBuilder:
-    def __init__(self, user: None):
-        self.user = user if user else AnonymousUser
+class AirEmptyRequest(HttpRequest):
+    @cached_property
+    def _current_scheme_host(self):
+        return '{}://{}'.format(self.scheme, self.get_host())
 
-    def build(self):
+    def get_host(self):
+        return self._get_raw_host()
+
+    def _get_raw_host(self):
         if 'HTTP_HOST' not in air_drf_relation_settings:
             raise AttributeError('HTTP_HOST is required for ContextBuilder.')
+        return air_drf_relation_settings.get('HTTP_HOST')
 
-        http_request = HttpRequest()
-        http_request.META['HTTP_HOST'] = air_drf_relation_settings.get('HTTP_HOST')
-        http_request._get_scheme = _get_scheme
-        context = {
-            'user': self.user,
-            'request': Request(request=http_request),
-            'view': None
-        }
-        return context
+    def _get_scheme(self):
+        use_ssl = air_drf_relation_settings.get('USE_SSL', False)
+        return 'https' if use_ssl else 'http'
 
 
-def _get_scheme():
-    use_ssl = air_drf_relation_settings.get('USE_SSL', False)
-    return 'https' if use_ssl else 'http'
+def set_context_by_context_builder_in_kwargs(kwargs):
+    try:
+        kwargs['context'] = {'request': AirEmptyRequest()}
+    except AttributeError as e:
+        pass

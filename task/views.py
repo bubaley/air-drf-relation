@@ -23,5 +23,5 @@ class TaskViewSet(viewsets.ModelViewSet):
     @action(methods=['GET'], detail=True)
     def get_without_context(self, request, pk=None):
         instance: Task = self.get_object()
-        data = TaskSerializer(instance).data
+        data = TaskSerializer([instance], many=True).data
         return Response(data)

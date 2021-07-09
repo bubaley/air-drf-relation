@@ -3,9 +3,9 @@ from rest_framework.utils import model_meta
 from rest_framework import serializers
 from django.db.models import ForeignKey
 
-from air_drf_relation.context_builder import ContextBuilder
+from air_drf_relation.context_builder import set_context_by_context_builder_in_kwargs
 from air_drf_relation.extra_kwargs import ExtraKwargsFactory
-from air_drf_relation.fields import RelatedField
+from air_drf_relation.fields import AirRelatedField
 from air_drf_relation.nested_fields_factory import NestedSaveFactory
 
 
@@ -23,7 +23,7 @@ class AirModelSerializer(serializers.ModelSerializer):
         self.nested_save_fields = self._get_nested_save_fields()
         self.nested_save_factory: NestedSaveFactory = None
         if 'context' not in kwargs:
-            self._set_context_in_kwargs(kwargs=kwargs)
+            set_context_by_context_builder_in_kwargs(kwargs=kwargs)
         if not self.action:
             self._set_action_from_view(kwargs=kwargs)
         if not self.user:
@@ -61,7 +61,7 @@ class AirModelSerializer(serializers.ModelSerializer):
         for el in hidden_fields:
             del self.fields[el]
         for field_name, field in self.fields.items():
-            if not isinstance(field, RelatedField):
+            if not isinstance(field, AirRelatedField):
                 continue
             model_field: ForeignKey = info.relations[field_name].model_field
             field_kwargs = field._kwargs
@@ -80,7 +80,7 @@ class AirModelSerializer(serializers.ModelSerializer):
             if not self.initial_data.get(field_name):
                 continue
             function_name = None
-            if isinstance(field, RelatedField):
+            if isinstance(field, AirRelatedField):
                 if field.queryset_function_disabled:
                     return
                 function_name = field.queryset_function_name
@@ -92,7 +92,7 @@ class AirModelSerializer(serializers.ModelSerializer):
     def _get_related_fields(self):
         related_fields = dict()
         for field_name, field in self.fields.items():
-            if type(field) in (RelatedField, PrimaryKeyRelatedField):
+            if type(field) in (AirRelatedField, PrimaryKeyRelatedField):
                 related_fields[field_name] = field
         return related_fields
 
@@ -157,8 +157,9 @@ class AirModelSerializer(serializers.ModelSerializer):
         self.nested_save_factory.save_nested_fields()
         return instance
 
-    def _set_context_in_kwargs(self, kwargs):
-        try:
-            kwargs['context'] = ContextBuilder(user=self.user).build()
-        except AttributeError as e:
-            pass
+    def __new__(cls, *args, **kwargs):
+        if kwargs.pop('many', False):
+            if 'context' not in kwargs:
+                set_context_by_context_builder_in_kwargs(kwargs=kwargs)
+            return cls.many_init(*args, **kwargs)
+        return super().__new__(cls, *args, **kwargs)
