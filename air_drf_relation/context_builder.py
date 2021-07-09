@@ -22,7 +22,7 @@ class AirEmptyRequest(HttpRequest):
         return 'https' if use_ssl else 'http'
 
 
-def set_context_by_context_builder_in_kwargs(kwargs):
+def set_empty_request_in_kwargs(kwargs):
     try:
         kwargs['context'] = {'request': AirEmptyRequest()}
     except AttributeError as e:

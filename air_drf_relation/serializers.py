@@ -3,7 +3,7 @@ from rest_framework.utils import model_meta
 from rest_framework import serializers
 from django.db.models import ForeignKey
 
-from air_drf_relation.context_builder import set_context_by_context_builder_in_kwargs
+from air_drf_relation.context_builder import set_empty_request_in_kwargs
 from air_drf_relation.extra_kwargs import ExtraKwargsFactory
 from air_drf_relation.fields import AirRelatedField
 from air_drf_relation.nested_fields_factory import NestedSaveFactory
@@ -23,7 +23,7 @@ class AirModelSerializer(serializers.ModelSerializer):
         self.nested_save_fields = self._get_nested_save_fields()
         self.nested_save_factory: NestedSaveFactory = None
         if 'context' not in kwargs:
-            set_context_by_context_builder_in_kwargs(kwargs=kwargs)
+            set_empty_request_in_kwargs(kwargs=kwargs)
         if not self.action:
             self._set_action_from_view(kwargs=kwargs)
         if not self.user:
@@ -160,6 +160,6 @@ class AirModelSerializer(serializers.ModelSerializer):
     def __new__(cls, *args, **kwargs):
         if kwargs.pop('many', False):
             if 'context' not in kwargs:
-                set_context_by_context_builder_in_kwargs(kwargs=kwargs)
+                set_empty_request_in_kwargs(kwargs=kwargs)
             return cls.many_init(*args, **kwargs)
         return super().__new__(cls, *args, **kwargs)
