@@ -4,7 +4,7 @@
 
 1. [Instalation](#instalation)
 2. [About](#about)
-3. [RelatedField](#relatedfield)
+3. [AirRelatedField](#airrelatedfield)
     1. [pk_only](#pk_only)
     2. [hidden](#hidden)
 4. [AirModelSerializer](#airmodelserializer)
@@ -30,22 +30,22 @@
 
 `air-drf-relation` adds flexibility and convenience in working with ModelSerializer.
 
-# RelatedField
+# AirRelatedField
 
 Used to extend the functionality of the `PrimaryKeyRelatedField`
 
 ```python
 class BookSerializer(ModelSerializer):
     # author = PrimaryKeyRelatedField(queryset=Author.objects) - default usage
-    author = RelatedField(AuthorSerializer)
-    city = RelatedField(CitySerializer)
+    author = AirRelatedField(AuthorSerializer)
+    city = AirRelatedField(CitySerializer)
 
     class Meta:
         model = Book
         fields = ('uuid', 'name', 'author', 'city')
 ```
 
-`RelatedField` allows you to get not only pk but also an object with pk, which will be searched.
+`AirRelatedField` allows you to get not only pk but also an object with pk, which will be searched.
 ```json
 {
     "name": "demo",
@@ -56,17 +56,17 @@ class BookSerializer(ModelSerializer):
 }
 ```
 ## pk_only
-Automatically RelatedField returns a serialized object. If you only want to use pk, you must specify the `pk_only` key.
+Automatically AirRelatedField returns a serialized object. If you only want to use pk, you must specify the `pk_only` key.
 
 ```python
-author = RelatedField(AuthorSerializer, pk_only=True)
+author = AirRelatedField(AuthorSerializer, pk_only=True)
 ```
 
 ## hidden
 Hidden fields are not used for serialization and validation. The data will be returned without fields. Usually used together in `AirModelSerializer`
 
 ```python
-author = RelatedField(AuthorSerializer, hidden=True)
+author = AirRelatedField(AuthorSerializer, hidden=True)
 ```
 
 ## Important
@@ -78,8 +78,8 @@ Used to extend the functionality of the `ModelSerializer`
 
 ```python
 class BookSerializer(AirModelSerializer): # full example
-    author = RelatedField(AuthorSerializer)
-    city = RelatedField(AuthorSerializer)
+    author = AirRelatedField(AuthorSerializer)
+    city = AirRelatedField(AuthorSerializer)
 
     class Meta:
         model = Book
@@ -125,7 +125,7 @@ Extends the standard work with `extra_kwargs` by adding work with additional att
 
 ```python
 class BookSerializer(AirModelSerializer):
-    author = RelatedField(AuthorSerializer)
+    author = AirRelatedField(AuthorSerializer)
     
     class Meta:
         fields = ('id', 'name', 'author')
@@ -198,7 +198,7 @@ Expand `extra_kwargs` by action in serializer.
 
 ```python
 class BookSerializer(AirModelSerializer):
-    author = RelatedField(AuthorSerializer, pk_only=True, null=True)
+    author = AirRelatedField(AuthorSerializer, pk_only=True, null=True)
     
     class Meta:
         fields = ('id', 'name', 'author')
@@ -222,7 +222,7 @@ Below are the priorities of the extra_kwargs extension in ascending order
 AirModelSerializer allows you to filter the queryset by nested fields.
 ```python
 class BookSerializer(AirModelSerializer):
-    city = RelatedField(CitySerializer, queryset_function_name='custom_filter')
+    city = AirRelatedField(CitySerializer, queryset_function_name='custom_filter')
 
     def queryset_author(self, queryset):
         return queryset.filter(active=True, created_by=self.user)
