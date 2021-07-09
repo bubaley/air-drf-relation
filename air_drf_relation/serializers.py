@@ -2,8 +2,8 @@ from rest_framework.relations import PrimaryKeyRelatedField
 from rest_framework.utils import model_meta
 from rest_framework import serializers
 from django.db.models import ForeignKey
-from copy import deepcopy
 
+from air_drf_relation.context_builder import ContextBuilder
 from air_drf_relation.extra_kwargs import ExtraKwargsFactory
 from air_drf_relation.fields import RelatedField
 from air_drf_relation.nested_fields_factory import NestedSaveFactory
@@ -22,6 +22,8 @@ class AirModelSerializer(serializers.ModelSerializer):
         self.user = kwargs.pop('user', None)
         self.nested_save_fields = self._get_nested_save_fields()
         self.nested_save_factory: NestedSaveFactory = None
+        if 'context' not in kwargs:
+            self._set_context_in_kwargs(kwargs=kwargs)
         if not self.action:
             self._set_action_from_view(kwargs=kwargs)
         if not self.user:
@@ -154,3 +156,9 @@ class AirModelSerializer(serializers.ModelSerializer):
         self.nested_save_factory.created = False
         self.nested_save_factory.save_nested_fields()
         return instance
+
+    def _set_context_in_kwargs(self, kwargs):
+        try:
+            kwargs['context'] = ContextBuilder(user=self.user).build()
+        except AttributeError as e:
+            pass
