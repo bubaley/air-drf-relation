@@ -7,6 +7,7 @@ from air_drf_relation.context_builder import set_empty_request_in_kwargs
 from air_drf_relation.extra_kwargs import ExtraKwargsFactory
 from air_drf_relation.fields import AirRelatedField
 from air_drf_relation.nested_fields_factory import NestedSaveFactory
+from rest_framework.validators import UniqueValidator
 
 
 class AirModelSerializer(serializers.ModelSerializer):
@@ -50,6 +51,11 @@ class AirModelSerializer(serializers.ModelSerializer):
         if self.nested_save_factory:
             for el in self.nested_save_factory.nested_fields:
                 field = self.fields.fields[el.field_name].child.fields.fields[el.reverse_field_name]
+                pk_field = self.fields.fields[el.field_name].child.fields.fields[el.pk]
+                pk_fields_validators = pk_field.validators
+                unique_validator = next((val for val in pk_fields_validators if type(val) == UniqueValidator), None)
+                if unique_validator:
+                    pk_fields_validators.remove(unique_validator)
                 setattr(field, 'read_only', True)
         self._filter_queryset_by_fields()
         super(AirModelSerializer, self).is_valid(raise_exception=raise_exception)

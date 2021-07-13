@@ -14,7 +14,7 @@ class Cabinet(models.Model):
 
 
 class Floor(models.Model):
-    uuid = models.UUIDField(default=uuid4, editable=False, primary_key=True, unique=True)
+    uuid = models.UUIDField(default=uuid4, editable=True, primary_key=True, unique=True)
     name = models.CharField(max_length=255)
     school = models.ForeignKey('School', on_delete=models.CASCADE, related_name='floors')
 
