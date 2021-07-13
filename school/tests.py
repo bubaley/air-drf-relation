@@ -3,9 +3,9 @@ from uuid import uuid4
 from django.test import TestCase
 from rest_framework.exceptions import ValidationError
 
-from school.models import School
+from school.models import School, Floor
 from school.serializers import SchoolDefaultNestedSerializer, SchoolCustomNestedSerializer, \
-    SchoolAutoNestedSerializer, ParentCreateByPkSerializer
+    SchoolAutoNestedSerializer, ParentCreateByPkSerializer, SchoolAutoNestedWithFloorSerializer
 
 
 class SchoolTest(TestCase):
@@ -35,6 +35,21 @@ class SchoolTest(TestCase):
         serializer.is_valid(raise_exception=True)
         instance: School = serializer.save()
         self.assertEqual(instance.cabinets.count(), 2)
+
+    def test_auto_nested_with_uuid_creation(self):
+        school = School.objects.create(name='nested_creation')
+        floor = Floor.objects.create(school=school, name='first')
+        data = {
+            'name': 'nested_creation',
+            'floors': [
+                {'name': 'first', 'uuid': str(floor.uuid)},
+                {'name': 'second'},
+            ]
+        }
+        serializer = SchoolAutoNestedWithFloorSerializer(instance=school, data=data)
+        serializer.is_valid(raise_exception=True)
+        instance: School = serializer.save()
+        self.assertEqual(instance.floors.count(), 2)
 
 
 class ParentTest(TestCase):

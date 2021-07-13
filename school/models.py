@@ -13,6 +13,12 @@ class Cabinet(models.Model):
     school = models.ForeignKey('School', on_delete=models.CASCADE, related_name='cabinets')
 
 
+class Floor(models.Model):
+    uuid = models.UUIDField(default=uuid4, editable=False, primary_key=True, unique=True)
+    name = models.CharField(max_length=255)
+    school = models.ForeignKey('School', on_delete=models.CASCADE, related_name='floors')
+
+
 class School(models.Model):
     name = models.CharField(max_length=256)
     children = models.ManyToManyField(Child, related_name='schools')

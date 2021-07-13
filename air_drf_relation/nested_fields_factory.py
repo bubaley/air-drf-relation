@@ -1,3 +1,5 @@
+from uuid import UUID
+
 from rest_framework.exceptions import ValidationError
 
 
@@ -71,7 +73,13 @@ class NestedSaveFactory:
     def _save_nested_objects_with_update(self, nested_field):
         saved_pks = list()
         field = getattr(self.instance, nested_field.field_name)
-        current_pks = field.all().values_list(nested_field.pk, flat=True)
+        _current_pks = field.all().values_list(nested_field.pk, flat=True)
+        current_pks = list()
+        for el in _current_pks:
+            if type(el) == UUID:
+                current_pks.append(str(el))
+                continue
+            current_pks.append(el)
         for index, value in enumerate(nested_field.validated_data):
             current_pk = nested_field.initial_data[index].get(nested_field.pk)
             if current_pk and current_pk not in current_pks:

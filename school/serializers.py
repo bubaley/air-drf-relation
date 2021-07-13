@@ -1,7 +1,7 @@
 from air_drf_relation.nested_fields_factory import NestedSaveFactory
 from air_drf_relation.serializers import AirModelSerializer
 from rest_framework.serializers import ModelSerializer
-from .models import School, Cabinet, Parent
+from .models import School, Cabinet, Parent, Floor
 
 
 class CabinetWithoutSchoolSerializer(ModelSerializer):
@@ -66,6 +66,21 @@ class SchoolAutoNestedSerializer(AirModelSerializer):
         model = School
         fields = ('id', 'name', 'cabinets')
         nested_save_fields = ('cabinets',)
+
+
+class FloorWithSchoolSerializer(AirModelSerializer):
+    class Meta:
+        model = Floor
+        fields = ('uuid', 'name', 'school')
+
+
+class SchoolAutoNestedWithFloorSerializer(AirModelSerializer):
+    floors = FloorWithSchoolSerializer(many=True)
+
+    class Meta:
+        model = School
+        fields = ('id', 'name', 'floors')
+        nested_save_fields = ('floors',)
 
 
 class ParentCreateByPkSerializer(AirModelSerializer):
