@@ -78,6 +78,12 @@ class MagazineSerializer(AirModelSerializer):
         fields = ('id', 'name', 'author', 'city')
 
 
+class DefaultMagazineSerializer(AirModelSerializer):
+    class Meta:
+        model = Magazine
+        fields = ('id', 'name', 'author', 'city')
+
+
 class MagazineSpecialSerializer(AirModelSerializer):
     city = AirRelatedField(CitySerializer)
 

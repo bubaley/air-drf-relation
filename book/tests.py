@@ -7,7 +7,7 @@ from rest_framework.utils.serializer_helpers import ReturnDict
 from .models import Author, Book, City, Genre
 from .serializers import BookSerializer, DefaultBookSerializer, MagazineSerializer, MagazineSpecialSerializer, \
     BookReadOnlySerializer, BookHiddenSerializer, BookActionKwargsSerializer, CityWritablePkSerializer, \
-    BookWithGenreSerializer
+    BookWithGenreSerializer, DefaultMagazineSerializer
 
 
 class TestBookObjects(TestCase):
@@ -46,7 +46,7 @@ class TestBookObjects(TestCase):
         extra_kwargs = {'author': {'pk_only': True}, 'city': {'pk_only': True}}
         data = BookSerializer(self.book, extra_kwargs=extra_kwargs).data
         self.assertEqual(type(data['author']), int)
-        self.assertEqual(type(data['city']), UUID)
+        self.assertEqual(type(data['city']), str)
 
     def test_required_creation(self):
         data = {'name': 'required and allow null creation'}
@@ -232,3 +232,11 @@ class TestMagazineObjects(TestCase):
         serializer = CityWritablePkSerializer(data=data, action='action_does_not_exists')
         serializer.is_valid(raise_exception=True)
         self.assertEqual(serializer.data.get('name', False), False)
+
+    def test_uuid_serialization(self):
+        data = {'name': 'default', 'author': self.author.pk, 'city': str(self.city.pk)}
+        extra_kwargs = {'city': {'pk_only': True}, 'author': {'pk_only': True}}
+        serializer = DefaultMagazineSerializer(data=data, extra_kwargs=extra_kwargs)
+        serializer.is_valid(raise_exception=True)
+        serializer.save()
+        self.assertEqual(type(serializer.data['city']), str)

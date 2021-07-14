@@ -8,6 +8,7 @@ from air_drf_relation.extra_kwargs import ExtraKwargsFactory
 from air_drf_relation.fields import AirRelatedField
 from air_drf_relation.nested_fields_factory import NestedSaveFactory
 from rest_framework.validators import UniqueValidator
+from uuid import UUID
 
 
 class AirModelSerializer(serializers.ModelSerializer):
@@ -21,6 +22,7 @@ class AirModelSerializer(serializers.ModelSerializer):
     def __init__(self, *args, **kwargs):
         self.action = kwargs.pop('action', None)
         self.user = kwargs.pop('user', None)
+        self._initial_extra_kwargs = kwargs.pop('extra_kwargs', {})
         self.nested_save_fields = self._get_nested_save_fields()
         self.nested_save_factory: NestedSaveFactory = None
         if 'context' not in kwargs:
@@ -29,7 +31,7 @@ class AirModelSerializer(serializers.ModelSerializer):
             self._set_action_from_view(kwargs=kwargs)
         if not self.user:
             self._set_user_from_request(kwargs)
-        self.extra_kwargs = self._get_extra_kwargs(kwargs)
+        self.extra_kwargs = self._get_extra_kwargs()
         self._update_extra_kwargs_in_fields()
         super(AirModelSerializer, self).__init__(*args, **kwargs)
         self._set_nested_save_factory()
@@ -102,8 +104,8 @@ class AirModelSerializer(serializers.ModelSerializer):
                 related_fields[field_name] = field
         return related_fields
 
-    def _get_extra_kwargs(self, kwargs: dict):
-        data = {'extra_kwargs': kwargs.pop('extra_kwargs', {})}
+    def _get_extra_kwargs(self):
+        data = {'extra_kwargs': self._initial_extra_kwargs}
         extra_kwargs = ExtraKwargsFactory(meta=self.Meta, data=data, action=self.action).init().extra_kwargs
         self._delete_custom_extra_kwargs_in_meta()
         return extra_kwargs
@@ -169,3 +171,10 @@ class AirModelSerializer(serializers.ModelSerializer):
                 set_empty_request_in_kwargs(kwargs=kwargs)
             return cls.many_init(*args, **kwargs)
         return super().__new__(cls, *args, **kwargs)
+
+    def to_representation(self, instance):
+        data = super(AirModelSerializer, self).to_representation(instance)
+        for el in data:
+            if type(data[el]) == UUID:
+                data[el] = str(data[el])
+        return data
