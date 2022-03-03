@@ -11,6 +11,7 @@ class AirRelatedField(PrimaryKeyRelatedField):
         self.hidden = kwargs.pop('hidden', False)
         self.queryset_function_name = kwargs.pop('queryset_function_name', None)
         self.queryset_function_disabled = kwargs.pop('queryset_function_disabled', False)
+        self.parent = None
 
         if not kwargs.get('read_only'):
             self.queryset = kwargs.pop('queryset', None)
@@ -20,6 +21,7 @@ class AirRelatedField(PrimaryKeyRelatedField):
             self.queryset_function_disabled = True
 
         super().__init__(**kwargs)
+        self.parent = None
 
     def __call__(self, *args, **kwargs):
         super.__call__(*args, **kwargs)
@@ -37,5 +39,7 @@ class AirRelatedField(PrimaryKeyRelatedField):
 
     def to_representation(self, value):
         if not self.pk_only:
-            return self.serializer(value, context=self.context).data
+            serializer = self.serializer(value, context=self.context)
+            serializer.parent = self.parent
+            return serializer.data
         return value.pk

@@ -1,14 +1,16 @@
+from uuid import UUID
+
 from rest_framework.relations import PrimaryKeyRelatedField
+from django.db import models
 from rest_framework.utils import model_meta
 from rest_framework import serializers
-from django.db.models import ForeignKey
+from django.db.models import ForeignKey, QuerySet
 
 from air_drf_relation.context_builder import set_empty_request_in_kwargs
 from air_drf_relation.extra_kwargs import ExtraKwargsFactory
 from air_drf_relation.fields import AirRelatedField
 from air_drf_relation.nested_fields_factory import NestedSaveFactory
 from rest_framework.validators import UniqueValidator
-from uuid import UUID
 
 
 class AirModelSerializer(serializers.ModelSerializer):
@@ -18,15 +20,24 @@ class AirModelSerializer(serializers.ModelSerializer):
         read_only_fields = ()
         write_only_fields = ()
         extra_kwargs = {}
+        settings = {
+            'optimize_queryset': True
+        }
 
     def __init__(self, *args, **kwargs):
         self.action = kwargs.pop('action', None)
         self.user = kwargs.pop('user', None)
+        self._optimize_queryset = True
+        if 'optimize_queryset' in kwargs:
+            self._optimize_queryset = kwargs.pop('optimize_queryset', True)
+        elif hasattr(self.Meta, 'settings'):
+            self._optimize_queryset = getattr(self.Meta, 'settings').get('optimize_queryset', True)
         self._initial_extra_kwargs = kwargs.pop('extra_kwargs', {})
         self.nested_save_fields = self._get_nested_save_fields()
         self.nested_save_factory: NestedSaveFactory = None
         if 'context' not in kwargs:
             set_empty_request_in_kwargs(kwargs=kwargs)
+
         if not self.action:
             self._set_action_from_view(kwargs=kwargs)
         if not self.user:
@@ -71,6 +82,7 @@ class AirModelSerializer(serializers.ModelSerializer):
         for field_name, field in self.fields.items():
             if not isinstance(field, AirRelatedField):
                 continue
+            field.parent = self
             model_field: ForeignKey = info.relations[field_name].model_field
             field_kwargs = field._kwargs
             if not model_field.editable:
@@ -172,9 +184,66 @@ class AirModelSerializer(serializers.ModelSerializer):
             return cls.many_init(*args, **kwargs)
         return super().__new__(cls, *args, **kwargs)
 
+    @classmethod
+    def many_init(cls, *args, **kwargs):
+        serializer = super(AirModelSerializer, cls).many_init(*args, **kwargs)
+        if hasattr(serializer, 'parent') and serializer.parent is None:
+            if serializer.child:
+                serializer.instance = serializer.child.optimize_queryset(serializer.instance)
+        return serializer
+
     def to_representation(self, instance):
+        if getattr(self, 'parent') is None:
+            if issubclass(type(instance), models.Model):
+                instance = self.optimize_queryset(self.Meta.model.objects.filter(pk=instance.pk)).first()
+            else:
+                instance = self.optimize_queryset(instance)
         data = super(AirModelSerializer, self).to_representation(instance)
         for el in data:
             if type(data[el]) == UUID:
                 data[el] = str(data[el])
         return data
+
+    def optimize_queryset(self, queryset=None):
+        if not queryset:
+            queryset = self.Meta.model.objects.all()
+        if not self._optimize_queryset:
+            return queryset
+        if isinstance(queryset, QuerySet):
+            select, prefetch = self.get_relations()
+            queryset = queryset.select_related(*select).prefetch_related(*prefetch)
+        return queryset
+
+    def get_relations(self) -> dict:
+        return self._get_relations(self, None, True)
+
+    def _get_relations(self, serializer, name=None, parent=False) -> dict:
+        select, prefetch = [], []
+        _serializer = serializer() if type(serializer) == serializers.SerializerMetaclass else serializer
+        for key, value in _serializer.fields.fields.items():
+            key_name = key if not name else f'{name}__{key}'
+            if issubclass(type(value), serializers.PrimaryKeyRelatedField) and hasattr(value, 'serializer'):
+                select_res, _ = self._get_relations(value.serializer, key_name)
+                if len(select_res):
+                    select += select_res
+                else:
+                    select.append(key_name)
+            elif issubclass(type(value), serializers.Serializer):
+                select_res, _ = self._get_relations(value, key_name)
+                if len(select_res):
+                    select += select_res
+                else:
+                    select.append(key_name)
+            elif issubclass(type(value), serializers.ManyRelatedField):
+                select_res, _ = self._get_relations(value.child_relation.serializer, key_name)
+                if parent:
+                    if len(select_res):
+                        prefetch += select_res
+                    else:
+                        prefetch.append(key_name)
+                else:
+                    if len(select_res):
+                        select += select_res
+                    else:
+                        select.append(key_name)
+        return select, prefetch

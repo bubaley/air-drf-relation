@@ -9,10 +9,18 @@ class AuthorSerializer(AirModelSerializer):
         fields = ('id', 'name')
 
 
-class CitySerializer(AirModelSerializer):
+class ParentCitySerializer(AirModelSerializer):
     class Meta:
         model = City
         fields = ('uuid', 'name')
+
+
+class CitySerializer(AirModelSerializer):
+    parent_city = AirRelatedField(ParentCitySerializer, read_only=True)
+
+    class Meta:
+        model = City
+        fields = ('uuid', 'name', 'parent_city')
 
 
 class BookSerializer(AirModelSerializer):
@@ -107,14 +115,18 @@ class CityWritablePkSerializer(AirModelSerializer):
 
 
 class GenreSerializer(AirModelSerializer):
+    city = AirRelatedField(CitySerializer, read_only=True)
+
     class Meta:
         model = Genre
-        fields = ('id', 'name')
+        fields = ('id', 'name', 'city')
 
 
 class BookWithGenreSerializer(AirModelSerializer):
     genres = AirRelatedField(GenreSerializer, many=True)
+    author = AirRelatedField(AuthorSerializer, read_only=True)
+    city = AirRelatedField(CitySerializer, read_only=True)
 
     class Meta:
         model = Book
-        fields = ('id', 'genres', 'name')
+        fields = ('id', 'genres', 'name', 'author', 'city')

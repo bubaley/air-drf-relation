@@ -13,9 +13,11 @@ class City(models.Model):
     uuid = models.UUIDField(primary_key=True, default=uuid4)
     name = models.CharField(max_length=128)
     active = models.BooleanField(default=True)
+    parent_city = models.ForeignKey('City', models.SET_NULL, null=True)
 
 
 class Genre(models.Model):
+    city = models.ForeignKey('City', on_delete=models.SET_NULL, null=True)
     name = models.CharField(max_length=256)
 
 

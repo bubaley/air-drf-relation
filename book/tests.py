@@ -1,10 +1,13 @@
-from uuid import uuid4, UUID
+from uuid import uuid4
+from django.conf import settings
+
+settings.DEBUG = True
+from django.db import connection, reset_queries
 
 from django.contrib.auth.models import User
 from django.test import TestCase
 from rest_framework.utils.serializer_helpers import ReturnDict
-
-from .models import Author, Book, City, Genre
+from .models import Author, Book, City, Genre, Magazine
 from .serializers import BookSerializer, DefaultBookSerializer, MagazineSerializer, MagazineSpecialSerializer, \
     BookReadOnlySerializer, BookHiddenSerializer, BookActionKwargsSerializer, CityWritablePkSerializer, \
     BookWithGenreSerializer, DefaultMagazineSerializer
@@ -18,7 +21,6 @@ class TestBookObjects(TestCase):
         self.city = City.objects.create(name='city')
         self.city2 = City.objects.create(name='second city')
         self.city3 = City.objects.create(name='inactive city', active=False)
-
         self.book = Book.objects.create(name='book', author=self.author, city=self.city)
 
     def test_default_book_serializer(self):
@@ -211,6 +213,7 @@ class TestMagazineObjects(TestCase):
         instance = serializer.save()
         self.assertEqual(instance.author, self.author)
         self.assertEqual(instance.city, self.city)
+        data = MagazineSerializer(Magazine.objects.all(), many=True).data
 
     def test_special_creation(self):
         data = {'name': 'default', 'author': self.author2.pk, 'city': str(self.city.pk)}
@@ -240,3 +243,35 @@ class TestMagazineObjects(TestCase):
         serializer.is_valid(raise_exception=True)
         serializer.save()
         self.assertEqual(type(serializer.data['city']), str)
+
+
+class TestOptimizeQuerySet(TestCase):
+    def setUp(self) -> None:
+        self.author = Author.objects.create(name='author')
+        self.city = City.objects.create(name='city')
+        self.city2 = City.objects.create(name='second city', parent_city=self.city)
+        genre1 = Genre.objects.create(name='first', city=self.city)
+        genre2 = Genre.objects.create(name='second', city=self.city2)
+        for el in range(50):
+            self.book = Book.objects.create(name='book', author=self.author, city=self.city2)
+            self.book.genres.set([genre1, genre2])
+
+    def test_get_fields_data(self):
+        select, prefetch = BookWithGenreSerializer(self.book).get_relations()
+        self.assertEqual(['author', 'city__parent_city'], select)
+        self.assertEqual(['genres__city__parent_city'], prefetch)
+
+    def test_optimize_queryset(self):
+        reset_queries()
+        list(BookWithGenreSerializer(self.book).optimize_queryset())
+        self.assertEqual(len(connection.queries), 4)
+
+    def test_simple_queryset(self):
+        reset_queries()
+        _ = BookWithGenreSerializer(self.book).data
+        self.assertEqual(len(connection.queries), 5)
+
+    def test_multiple_queryset(self):
+        reset_queries()
+        _ = BookWithGenreSerializer(Book.objects.all(), many=True).data
+        self.assertEqual(len(connection.queries), 5)
