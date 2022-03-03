@@ -130,3 +130,11 @@ class BookWithGenreSerializer(AirModelSerializer):
     class Meta:
         model = Book
         fields = ('id', 'genres', 'name', 'author', 'city')
+
+
+class BookWithGenreListSerializer(AirModelSerializer):
+    genres = GenreSerializer(many=True)
+
+    class Meta:
+        model = Book
+        fields = ('id', 'genres', 'name')

@@ -10,7 +10,7 @@ from rest_framework.utils.serializer_helpers import ReturnDict
 from .models import Author, Book, City, Genre, Magazine
 from .serializers import BookSerializer, DefaultBookSerializer, MagazineSerializer, MagazineSpecialSerializer, \
     BookReadOnlySerializer, BookHiddenSerializer, BookActionKwargsSerializer, CityWritablePkSerializer, \
-    BookWithGenreSerializer, DefaultMagazineSerializer
+    BookWithGenreSerializer, DefaultMagazineSerializer, BookWithGenreListSerializer
 
 
 class TestBookObjects(TestCase):
@@ -257,9 +257,9 @@ class TestOptimizeQuerySet(TestCase):
             self.book.genres.set([genre1, genre2])
 
     def test_get_fields_data(self):
-        select, prefetch = BookWithGenreSerializer(self.book).get_relations()
-        self.assertEqual(['author', 'city__parent_city'], select)
-        self.assertEqual(['genres__city__parent_city'], prefetch)
+        data = BookWithGenreSerializer(self.book).get_relations()
+        self.assertEqual(['author', 'city__parent_city'], data['select'])
+        self.assertEqual(['genres__city__parent_city'], data['prefetch'])
 
     def test_optimize_queryset(self):
         reset_queries()
@@ -274,4 +274,9 @@ class TestOptimizeQuerySet(TestCase):
     def test_multiple_queryset(self):
         reset_queries()
         _ = BookWithGenreSerializer(Book.objects.all(), many=True).data
+        self.assertEqual(len(connection.queries), 5)
+
+    def test_multiple_queryset_by_list_serializer(self):
+        reset_queries()
+        _ = BookWithGenreListSerializer(Book.objects.all(), many=True).data
         self.assertEqual(len(connection.queries), 5)

@@ -210,40 +210,38 @@ class AirModelSerializer(serializers.ModelSerializer):
         if not self._optimize_queryset:
             return queryset
         if isinstance(queryset, QuerySet):
-            select, prefetch = self.get_relations()
-            queryset = queryset.select_related(*select).prefetch_related(*prefetch)
+            data = self.get_relations()
+            queryset = queryset.select_related(*data['select']).prefetch_related(*data['prefetch'])
         return queryset
 
     def get_relations(self) -> dict:
         return self._get_relations(self, None, True)
 
     def _get_relations(self, serializer, name=None, parent=False) -> dict:
-        select, prefetch = [], []
+        data = {'select': [], 'prefetch': []}
         _serializer = serializer() if type(serializer) == serializers.SerializerMetaclass else serializer
         for key, value in _serializer.fields.fields.items():
             key_name = key if not name else f'{name}__{key}'
-            if issubclass(type(value), serializers.PrimaryKeyRelatedField) and hasattr(value, 'serializer'):
-                select_res, _ = self._get_relations(value.serializer, key_name)
-                if len(select_res):
-                    select += select_res
-                else:
-                    select.append(key_name)
-            elif issubclass(type(value), serializers.Serializer):
-                select_res, _ = self._get_relations(value, key_name)
-                if len(select_res):
-                    select += select_res
-                else:
-                    select.append(key_name)
-            elif issubclass(type(value), serializers.ManyRelatedField):
-                select_res, _ = self._get_relations(value.child_relation.serializer, key_name)
-                if parent:
-                    if len(select_res):
-                        prefetch += select_res
-                    else:
-                        prefetch.append(key_name)
-                else:
-                    if len(select_res):
-                        select += select_res
-                    else:
-                        select.append(key_name)
-        return select, prefetch
+            current_type = type(value)
+            if issubclass(current_type, serializers.PrimaryKeyRelatedField) and hasattr(value, 'serializer'):
+                res = self._get_relations(value.serializer, key_name)
+                _append_to_relations(data, res, key_name, False)
+            elif issubclass(current_type, serializers.Serializer):
+                res = self._get_relations(value, key_name)
+                _append_to_relations(data, res, key_name, False)
+            elif issubclass(current_type, serializers.ListSerializer):
+                res = self._get_relations(value.child, key_name)
+                _append_to_relations(data, res, key_name, parent)
+            elif issubclass(current_type, serializers.ManyRelatedField):
+                res = self._get_relations(value.child_relation.serializer, key_name)
+                _append_to_relations(data, res, key_name, parent)
+        return data
+
+
+def _append_to_relations(data, result, key_name, parent=False):
+    push_to = 'select' if not parent else 'prefetch'
+    select = result['select']
+    if len(select):
+        data[push_to] += select
+    else:
+        data[push_to].append(key_name)
