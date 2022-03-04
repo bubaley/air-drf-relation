@@ -7,10 +7,10 @@ from django.db import connection, reset_queries
 from django.contrib.auth.models import User
 from django.test import TestCase
 from rest_framework.utils.serializer_helpers import ReturnDict
-from .models import Author, Book, City, Genre, Magazine
+from .models import Author, Book, City, Genre, Magazine, Bookmark
 from .serializers import BookSerializer, DefaultBookSerializer, MagazineSerializer, MagazineSpecialSerializer, \
     BookReadOnlySerializer, BookHiddenSerializer, BookActionKwargsSerializer, CityWritablePkSerializer, \
-    BookWithGenreSerializer, DefaultMagazineSerializer, BookWithGenreListSerializer
+    BookWithGenreSerializer, DefaultMagazineSerializer, BookWithGenreListSerializer, BookmarkSerializer
 
 
 class TestBookObjects(TestCase):
@@ -256,6 +256,9 @@ class TestOptimizeQuerySet(TestCase):
             self.book = Book.objects.create(name='book', author=self.author, city=self.city2)
             self.book.genres.set([genre1, genre2])
 
+        for el in range(100):
+            self.bookmark = Bookmark.objects.create(book=self.book, name='bookmark')
+
     def test_get_fields_data(self):
         data = BookWithGenreSerializer(self.book).get_relations()
         self.assertEqual(['author', 'city__parent_city'], data['select'])
@@ -280,3 +283,8 @@ class TestOptimizeQuerySet(TestCase):
         reset_queries()
         _ = BookWithGenreListSerializer(Book.objects.all(), many=True).data
         self.assertEqual(len(connection.queries), 4)
+
+    def test_multiple_by_related_object_serializer(self):
+        reset_queries()
+        _ = BookmarkSerializer(Bookmark.objects.first()).data
+        self.assertEqual(len(connection.queries), 6)

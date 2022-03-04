@@ -1,6 +1,6 @@
 from air_drf_relation.serializers import AirModelSerializer
 from air_drf_relation.fields import AirRelatedField
-from .models import Author, Book, City, Magazine, Genre
+from .models import Author, Book, City, Magazine, Genre, Bookmark
 
 
 class AuthorSerializer(AirModelSerializer):
@@ -138,3 +138,11 @@ class BookWithGenreListSerializer(AirModelSerializer):
     class Meta:
         model = Book
         fields = ('id', 'genres', 'name')
+
+
+class BookmarkSerializer(AirModelSerializer):
+    book = BookWithGenreListSerializer()
+
+    class Meta:
+        model = Bookmark
+        fields = ('id', 'name', 'book')

@@ -215,9 +215,9 @@ class AirModelSerializer(serializers.ModelSerializer):
         return queryset
 
     def get_relations(self) -> dict:
-        return self._get_relations(self, None, True)
+        return self._get_relations(self, None)
 
-    def _get_relations(self, serializer, name=None, parent=False) -> dict:
+    def _get_relations(self, serializer, name=None) -> dict:
         data = {'select': [], 'prefetch': []}
         _serializer = serializer() if type(serializer) == serializers.SerializerMetaclass else serializer
         for key, value in _serializer.fields.fields.items():
@@ -231,18 +231,18 @@ class AirModelSerializer(serializers.ModelSerializer):
                 _append_to_relations(data, res, key_name, False)
             elif issubclass(current_type, serializers.ListSerializer):
                 res = self._get_relations(value.child, key_name)
-                _append_to_relations(data, res, key_name, parent)
+                _append_to_relations(data, res, key_name, True)
             elif issubclass(current_type, serializers.ManyRelatedField):
                 if hasattr(value.child_relation, 'serializer'):
                     res = self._get_relations(value.child_relation.serializer, key_name)
                 else:
                     res = None
-                _append_to_relations(data, res, key_name, parent)
+                _append_to_relations(data, res, key_name, True)
         return data
 
 
-def _append_to_relations(data, result, key_name, parent=False):
-    push_to = 'select' if not parent else 'prefetch'
+def _append_to_relations(data, result, key_name, multiple=False):
+    push_to = 'select' if not multiple else 'prefetch'
     if result and len(result.get('select', [])):
         data[push_to] += result.get('select', [])
         return

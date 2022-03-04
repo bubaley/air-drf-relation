@@ -35,3 +35,8 @@ class Magazine(models.Model):
     name = models.CharField(max_length=255)
     author = models.ForeignKey(Author, related_name='magazines', on_delete=models.CASCADE)
     city = models.ForeignKey(City, related_name='magazines', on_delete=models.CASCADE)
+
+
+class Bookmark(models.Model):
+    name = models.CharField(max_length=255)
+    book = models.ForeignKey(Book, on_delete=models.CASCADE, related_name='bookmarks')
