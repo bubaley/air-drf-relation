@@ -252,7 +252,7 @@ class TestOptimizeQuerySet(TestCase):
         self.city2 = City.objects.create(name='second city', parent_city=self.city)
         genre1 = Genre.objects.create(name='first', city=self.city)
         genre2 = Genre.objects.create(name='second', city=self.city2)
-        for el in range(50):
+        for el in range(100):
             self.book = Book.objects.create(name='book', author=self.author, city=self.city2)
             self.book.genres.set([genre1, genre2])
 
@@ -269,14 +269,14 @@ class TestOptimizeQuerySet(TestCase):
     def test_simple_queryset(self):
         reset_queries()
         _ = BookWithGenreSerializer(self.book).data
-        self.assertEqual(len(connection.queries), 5)
+        self.assertEqual(len(connection.queries), 4)
 
     def test_multiple_queryset(self):
         reset_queries()
         _ = BookWithGenreSerializer(Book.objects.all(), many=True).data
-        self.assertEqual(len(connection.queries), 5)
+        self.assertEqual(len(connection.queries), 4)
 
     def test_multiple_queryset_by_list_serializer(self):
         reset_queries()
         _ = BookWithGenreListSerializer(Book.objects.all(), many=True).data
-        self.assertEqual(len(connection.queries), 5)
+        self.assertEqual(len(connection.queries), 4)

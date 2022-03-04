@@ -205,7 +205,7 @@ class AirModelSerializer(serializers.ModelSerializer):
         return data
 
     def optimize_queryset(self, queryset=None):
-        if not queryset:
+        if queryset is None:
             queryset = self.Meta.model.objects.all()
         if not self._optimize_queryset:
             return queryset
@@ -233,15 +233,17 @@ class AirModelSerializer(serializers.ModelSerializer):
                 res = self._get_relations(value.child, key_name)
                 _append_to_relations(data, res, key_name, parent)
             elif issubclass(current_type, serializers.ManyRelatedField):
-                res = self._get_relations(value.child_relation.serializer, key_name)
+                if hasattr(value.child_relation, 'serializer'):
+                    res = self._get_relations(value.child_relation.serializer, key_name)
+                else:
+                    res = None
                 _append_to_relations(data, res, key_name, parent)
         return data
 
 
 def _append_to_relations(data, result, key_name, parent=False):
     push_to = 'select' if not parent else 'prefetch'
-    select = result['select']
-    if len(select):
-        data[push_to] += select
-    else:
-        data[push_to].append(key_name)
+    if result and len(result.get('select', [])):
+        data[push_to] += result.get('select', [])
+        return
+    data[push_to].append(key_name)
