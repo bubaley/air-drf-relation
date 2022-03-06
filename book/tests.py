@@ -1,6 +1,8 @@
 from uuid import uuid4
 from django.conf import settings
 
+from air_drf_relation.queryset_optimization import get_relations
+
 settings.DEBUG = True
 from django.db import connection, reset_queries
 
@@ -260,13 +262,13 @@ class TestOptimizeQuerySet(TestCase):
             self.bookmark = Bookmark.objects.create(book=self.book, name='bookmark')
 
     def test_get_fields_data(self):
-        data = BookWithGenreSerializer(self.book).get_relations()
+        data = get_relations(BookWithGenreSerializer)
         self.assertEqual(['author', 'city__parent_city'], data['select'])
         self.assertEqual(['genres__city__parent_city'], data['prefetch'])
 
     def test_optimize_queryset(self):
         reset_queries()
-        list(BookWithGenreSerializer(self.book).optimize_queryset())
+        list(BookWithGenreSerializer(self.book))
         self.assertEqual(len(connection.queries), 4)
 
     def test_simple_queryset(self):
@@ -287,4 +289,4 @@ class TestOptimizeQuerySet(TestCase):
     def test_multiple_by_related_object_serializer(self):
         reset_queries()
         _ = BookmarkSerializer(Bookmark.objects.first()).data
-        self.assertEqual(len(connection.queries), 6)
+        self.assertEqual(len(connection.queries), 5)

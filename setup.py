@@ -8,7 +8,7 @@ with open(path.join(this_directory, 'README.md'), encoding='utf-8') as f:
     long_description = f.read()
 
 setup(name='air_drf_relation',
-      version='0.2.3',
+      version='0.2.4',
       description='Improved interaction with DRF relations.',
       long_description=long_description,
       long_description_content_type='text/markdown',
