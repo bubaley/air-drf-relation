@@ -14,7 +14,7 @@ class AirEmptyRequest(HttpRequest):
 
     def _get_raw_host(self):
         if 'HTTP_HOST' not in air_drf_relation_settings:
-            raise AttributeError('HTTP_HOST is required for ContextBuilder.')
+            return 'localhost:8000'
         return air_drf_relation_settings.get('HTTP_HOST')
 
     def _get_scheme(self):
