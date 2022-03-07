@@ -132,6 +132,11 @@ class BookWithGenreSerializer(AirModelSerializer):
         fields = ('id', 'genres', 'name', 'author', 'city')
 
 
+class DisableOptimizationBookSerializer(BookWithGenreSerializer):
+    class Meta(BookWithGenreSerializer.Meta):
+        optimize_queryset = False
+
+
 class BookWithGenreListSerializer(AirModelSerializer):
     genres = GenreSerializer(many=True)
 

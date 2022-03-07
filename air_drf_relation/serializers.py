@@ -21,9 +21,7 @@ class AirModelSerializer(serializers.ModelSerializer):
         read_only_fields = ()
         write_only_fields = ()
         extra_kwargs = {}
-        settings = {
-            'optimize_queryset': True
-        }
+        optimize_queryset = True
 
     def __init__(self, *args, **kwargs):
         self.action = kwargs.pop('action', None)
@@ -31,8 +29,8 @@ class AirModelSerializer(serializers.ModelSerializer):
         self.optimize_queryset = True
         if 'optimize_queryset' in kwargs:
             self.optimize_queryset = kwargs.pop('optimize_queryset', True)
-        elif hasattr(self.Meta, 'settings'):
-            self.optimize_queryset = getattr(self.Meta, 'settings').get('optimize_queryset', True)
+        elif hasattr(self.Meta, 'optimize_queryset'):
+            self.optimize_queryset = getattr(self.Meta, 'optimize_queryset', True)
         self._initial_extra_kwargs = kwargs.pop('extra_kwargs', {})
         self.nested_save_fields = self._get_nested_save_fields()
         self.nested_save_factory: NestedSaveFactory = None
@@ -189,12 +187,13 @@ class AirModelSerializer(serializers.ModelSerializer):
     def many_init(cls, *args, **kwargs):
         serializer = super(AirModelSerializer, cls).many_init(*args, **kwargs)
         if hasattr(serializer, 'parent') and serializer.parent is None:
-            if serializer.child:
+            if serializer.child and \
+                    hasattr(serializer.child, 'optimize_queryset') and serializer.child.optimize_queryset:
                 serializer.instance = optimize_queryset(serializer.instance, serializer.child)
         return serializer
 
     def to_representation(self, instance):
-        if getattr(self, 'parent') is None:
+        if getattr(self, 'parent') is None and self.optimize_queryset:
             instance = optimize_queryset(instance, self)
         data = super(AirModelSerializer, self).to_representation(instance)
         for el in data:

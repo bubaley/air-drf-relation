@@ -12,7 +12,8 @@ from rest_framework.utils.serializer_helpers import ReturnDict
 from .models import Author, Book, City, Genre, Magazine, Bookmark
 from .serializers import BookSerializer, DefaultBookSerializer, MagazineSerializer, MagazineSpecialSerializer, \
     BookReadOnlySerializer, BookHiddenSerializer, BookActionKwargsSerializer, CityWritablePkSerializer, \
-    BookWithGenreSerializer, DefaultMagazineSerializer, BookWithGenreListSerializer, BookmarkSerializer
+    BookWithGenreSerializer, DefaultMagazineSerializer, BookWithGenreListSerializer, BookmarkSerializer, \
+    DisableOptimizationBookSerializer
 
 
 class TestBookObjects(TestCase):
@@ -254,9 +255,12 @@ class TestOptimizeQuerySet(TestCase):
         self.city2 = City.objects.create(name='second city', parent_city=self.city)
         genre1 = Genre.objects.create(name='first', city=self.city)
         genre2 = Genre.objects.create(name='second', city=self.city2)
+        genre3 = Genre.objects.create(name='second', city=self.city2)
+        genre4 = Genre.objects.create(name='second', city=self.city2)
+        genre5 = Genre.objects.create(name='second', city=self.city2)
         for el in range(100):
             self.book = Book.objects.create(name='book', author=self.author, city=self.city2)
-            self.book.genres.set([genre1, genre2])
+            self.book.genres.set([genre1, genre2, genre3, genre4, genre5])
 
         for el in range(100):
             self.bookmark = Bookmark.objects.create(book=self.book, name='bookmark')
@@ -290,3 +294,17 @@ class TestOptimizeQuerySet(TestCase):
         reset_queries()
         _ = BookmarkSerializer(Bookmark.objects.first()).data
         self.assertEqual(len(connection.queries), 5)
+
+    def test_enable_and_disable_optimization(self):
+        reset_queries()
+        _ = BookmarkSerializer(Bookmark.objects.all(), many=True, optimize_queryset=False).data
+        self.assertTrue(len(connection.queries) > 300)
+        reset_queries()
+        _ = BookWithGenreSerializer(Book.objects.first(), optimize_queryset=False).data
+        self.assertTrue(len(connection.queries) > 10)
+        reset_queries()
+        _ = DisableOptimizationBookSerializer(Book.objects.all(), many=True).data
+        self.assertTrue(len(connection.queries) > 300)
+        reset_queries()
+        _ = DisableOptimizationBookSerializer(Book.objects.all(), many=True, optimize_queryset=True).data
+        self.assertTrue(len(connection.queries) < 10)
