@@ -23,7 +23,12 @@ def get_relations(serializer) -> dict:
 def _get_relations(serializer, to_prefetch=False) -> dict:
     results = {'select': [], 'prefetch': []}
     _serializer = serializer() if type(serializer) == serializers.SerializerMetaclass else serializer
+    if not issubclass(type(_serializer), serializers.ModelSerializer):
+        return results
+    model_fields = [v.name for v in _serializer.Meta.model._meta.get_fields()]
     for field, value in _serializer.fields.fields.items():
+        if field not in model_fields or value.write_only:
+            continue
         field_serializer, field_to_prefetch = _get_field_serializer(value)
         prefetch = to_prefetch or field_to_prefetch
         if not field_serializer:
