@@ -200,3 +200,35 @@ class AirModelSerializer(serializers.ModelSerializer):
             if type(data[el]) == UUID:
                 data[el] = str(data[el])
         return data
+
+
+class AirAnyField(serializers.Field):
+    def to_representation(self, value):
+        return value
+
+    def to_internal_value(self, data):
+        return data
+
+
+class AirEmptySerializer(serializers.Serializer):
+
+    def __init__(self, *args, **kwargs):
+        super(AirEmptySerializer, self).__init__(*args, **kwargs)
+
+    def update(self, instance, validated_data):
+        pass
+
+    def create(self, validated_data):
+        pass
+
+
+class AirDynamicSerializer(AirEmptySerializer):
+    def __init__(self, *args, **kwargs):
+        values = kwargs.pop('values')
+        if not type(values) == dict:
+            raise TypeError('values should be dict.')
+        for key, value in values.items():
+            self.fields.fields[key] = value
+            self.fields.fields[key].field_name = key
+            self.fields.fields[key].source_attrs = [key]
+        super(AirDynamicSerializer, self).__init__(*args, **kwargs)

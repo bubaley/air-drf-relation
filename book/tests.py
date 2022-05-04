@@ -1,7 +1,12 @@
 from uuid import uuid4
 from django.conf import settings
 
+from air_drf_relation.decorators import queries_count
 from air_drf_relation.queryset_optimization import get_relations
+from air_drf_relation.serializers import AirDynamicSerializer
+from rest_framework import serializers
+
+from .filters import AuthorFilter
 
 settings.DEBUG = True
 from django.db import connection, reset_queries
@@ -308,3 +313,46 @@ class TestOptimizeQuerySet(TestCase):
         reset_queries()
         _ = DisableOptimizationBookSerializer(Book.objects.all(), many=True, optimize_queryset=True).data
         self.assertTrue(len(connection.queries) < 10)
+
+
+class TestDynamicSerializer(TestCase):
+    def test_success_data(self):
+        data = {'name': 'Mark', 'age': 13}
+        serializer = AirDynamicSerializer(data=data, values={
+            'name': serializers.CharField(),
+            'age': serializers.IntegerField()
+        })
+        serializer.is_valid()
+        self.assertEqual(len(serializer.errors), 0)
+
+    def test_error_data(self):
+        data = {'name': 'Mark', 'age': 'age'}
+        serializer = AirDynamicSerializer(data=data, values={
+            'name': serializers.CharField(),
+            'age': serializers.FloatField()
+        })
+        serializer.is_valid()
+        self.assertEqual(len(serializer.errors), 1)
+
+
+class TestFilters(TestCase):
+    def setUp(self) -> None:
+        self.author1 = Author.objects.create(name='author')
+        self.author2 = Author.objects.create(name='author')
+        Book.objects.create(name='book1', author=self.author1)
+        Book.objects.create(name='book2', author=self.author2)
+
+    def test_multiple_filer(self):
+        filters = AuthorFilter(queryset=Book.objects.all())
+        self.assertEqual(len(filters.qs), 2)
+        filters = AuthorFilter({'author': '1'}, queryset=Book.objects.all())
+        self.assertEqual(len(filters.qs), 1)
+        filters = AuthorFilter({'author': '   1, 2  '}, queryset=Book.objects.all())
+        self.assertEqual(len(filters.qs), 2)
+
+
+class TestDecoratorsSerializer(TestCase):
+    @queries_count
+    def test_queries_count(self):
+        Book.objects.create(name='123')
+        Book.objects.all().count()

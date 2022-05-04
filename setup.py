@@ -8,7 +8,7 @@ with open(path.join(this_directory, 'README.md'), encoding='utf-8') as f:
     long_description = f.read()
 
 setup(name='air_drf_relation',
-      version='0.2.7',
+      version='0.3.0',
       description='Improved interaction with DRF relations.',
       long_description=long_description,
       long_description_content_type='text/markdown',
@@ -20,6 +20,7 @@ setup(name='air_drf_relation',
       packages=find_packages(),
       install_requires=[
           'djangorestframework',
+          'django-filter',
           'django'
       ],
       include_package_data=True,

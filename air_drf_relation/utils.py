@@ -1,3 +1,6 @@
+import uuid
+
+
 def get_pk_from_data(data, pk_name):
     pk = None
     if type(data) in [int, str]:
@@ -26,3 +29,17 @@ def create_dict_from_list(values: list, value_data) -> dict:
     for el in values:
         result[el] = value_data
     return result
+
+
+def set_values_to_class(instance, values: dict):
+    for key, value in values.items():
+        setattr(instance, key, value)
+    return instance
+
+
+def is_uuid(value: str) -> bool:
+    try:
+        uuid.UUID(value)
+        return True
+    except ValueError:
+        return False

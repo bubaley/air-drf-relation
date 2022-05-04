@@ -39,6 +39,7 @@ INSTALLED_APPS = [
     'django.contrib.sessions',
     'django.contrib.messages',
     'django.contrib.staticfiles',
+    'django_filters',
     'book',
     'school',
     'device',
@@ -132,4 +133,10 @@ DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 AIR_DRF_RELATION = {
     'HTTP_HOST': env.str('HTTP_HOST', '127.0.0.1:8000'),
     'USE_SSL': env.bool('USE_SSL', False)
+}
+
+REST_FRAMEWORK = {
+    'DEFAULT_FILTER_BACKENDS': (
+        'django_filters.rest_framework.DjangoFilterBackend',
+    ),
 }
