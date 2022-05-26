@@ -41,9 +41,10 @@ INSTALLED_APPS = [
     'django.contrib.staticfiles',
     'django_filters',
     'book',
-    'school',
     'device',
-    'task'
+    'task',
+    'table',
+    'air_drf_relation'
 ]
 
 MIDDLEWARE = [
@@ -132,7 +133,8 @@ DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 
 AIR_DRF_RELATION = {
     'HTTP_HOST': env.str('HTTP_HOST', '127.0.0.1:8000'),
-    'USE_SSL': env.bool('USE_SSL', False)
+    'USE_SSL': env.bool('USE_SSL', False),
+    'USE_PRELOAD': True
 }
 
 REST_FRAMEWORK = {

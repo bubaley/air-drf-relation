@@ -25,7 +25,7 @@ def get_related_object(data, queryset):
 
 
 def create_dict_from_list(values: list, value_data) -> dict:
-    result = dict()
+    result = {}
     for el in values:
         result[el] = value_data
     return result

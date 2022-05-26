@@ -1,6 +1,5 @@
 from django.core.exceptions import ObjectDoesNotExist
-from rest_framework.relations import PrimaryKeyRelatedField
-
+from rest_framework.relations import PrimaryKeyRelatedField, Field
 from air_drf_relation.utils import get_related_object
 
 
@@ -12,6 +11,7 @@ class AirRelatedField(PrimaryKeyRelatedField):
         self.queryset_function_name = kwargs.pop('queryset_function_name', None)
         self.queryset_function_disabled = kwargs.pop('queryset_function_disabled', False)
         self.parent = None
+        kwargs.pop('as_serializer', None)
 
         if not kwargs.get('read_only'):
             self.queryset = kwargs.pop('queryset', None)
@@ -22,6 +22,11 @@ class AirRelatedField(PrimaryKeyRelatedField):
 
         super().__init__(**kwargs)
         self.parent = None
+
+    def __new__(cls, serializer, *args, **kwargs):
+        if kwargs.pop('as_serializer', False):
+            return serializer(*args, **kwargs)
+        return super().__new__(cls, serializer, *args, **kwargs)
 
     def __call__(self, *args, **kwargs):
         super.__call__(*args, **kwargs)
@@ -43,3 +48,11 @@ class AirRelatedField(PrimaryKeyRelatedField):
             serializer.parent = self.parent
             return serializer.data
         return value.pk
+
+
+class AirAnyField(Field):
+    def to_representation(self, value):
+        return value
+
+    def to_internal_value(self, data):
+        return data

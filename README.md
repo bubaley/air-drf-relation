@@ -17,10 +17,6 @@
         3. [action_extra_kwargs](#action_extra_kwargs)
     4. [Priority extra_kwargs](#priority-extra_kwargs)
     5. [Filter nested querysets](#filter-nested-querysets)
-5. [Nested save objects](#nested-save-objects)
-    1. [Saving nested objects without NestedFactory](#saving-nested-objects-without-nestedfactory) 
-    2. [Saving nested objects with NestedFactory](#saving-nested-objects-with-nestedfactory)
-    3. [Using NestedFactory in AirModelSerializer](#using-nestedfactory-in-airmodelserializer)
 
 # Instalation
 
@@ -233,87 +229,4 @@ class BookSerializer(AirModelSerializer):
     class Meta:
         model = Book
         fields = ('uuid', 'name', 'author', 'city')
-```
-
-# Nested save objects
-You can use the `NestedFactory` functionality to easily create or update objects by nested fields. NestedFactory stores primary keys by **default**. But you can delete objects and create new ones every time.
-
-**Only use NestedFactory in simple cases!**
-
-## Saving nested objects without NestedFactory
-
-```python
-class CabinetSerializer(ModelSerializer):
-    class Meta:
-        model = Cabinet
-        fields = ('id', 'name', 'code') # you should hide or set read_only on 'school' field
-        
-
-class SchoolDefaultNestedSerializer(ModelSerializer):
-    cabinets = CabinetSerializer(many=True)
-
-    class Meta:
-        model = School
-        fields = ('id', 'name', 'cabinets')
-
-    def create(self, validated_data):
-        cabinets = validated_data.pop('cabinets', [])
-        instance = School.objects.create(**validated_data)
-        for el in cabinets:
-            Cabinet.objects.create(**el, school=instance)
-        return instance
-
-    def update(self, instance: School, validated_data):
-        cabinets = validated_data.pop('cabinets', [])
-        instance.cabinets.all().delete()
-        instance.__dict__.update(validated_data)
-        instance.save()
-        for el in cabinets:
-            Cabinet.objects.create(**el, school=instance)
-        return instance
-```
-
-## Saving nested objects with NestedFactory
-
-```python
-class CabinetSerializer(ModelSerializer):
-    class Meta:
-        model = Cabinet
-        fields = ('id', 'name', 'code', 'school') # 'school' field is required
-
-
-class SchoolCustomNestedSerializer(ModelSerializer):
-    cabinets = CabinetSerializer(many=True)
-
-    class Meta:
-        model = School
-        fields = ('id', 'name', 'cabinets')
-
-    def save_nested(self, validated_data, instance=None):
-        factory = NestedSaveFactory(serializer=self, nested_save_fields=['cabinets'])
-        factory.set_data(validated_data=validated_data, instance=instance)
-        return factory.save_instance().save_nested_fields().instance
-
-    def create(self, validated_data):
-        return self.save_nested(validated_data=validated_data)
-
-    def update(self, instance, validated_data):
-        return self.save_nested(validated_data=validated_data, instance=instance)
-```
-
-## Using NestedFactory in AirModelSerializer
-```python
-class CabinetSerializer(ModelSerializer):
-    class Meta:
-        model = Cabinet
-        fields = ('id', 'name', 'code', 'school') # 'school' field is required
-
-
-class SchoolAutoNestedSerializer(ModelSerializer):
-    cabinets = CabinetSerializer(many=True)
-
-    class Meta:
-        model = School
-        fields = ('id', 'name', 'cabinets')
-        nested_save_fields = ('cabinets',)
 ```

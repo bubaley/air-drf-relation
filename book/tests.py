@@ -7,8 +7,6 @@ from air_drf_relation.serializers import AirDynamicSerializer
 from rest_framework import serializers
 
 from .filters import AuthorFilter
-
-settings.DEBUG = True
 from django.db import connection, reset_queries
 
 from django.contrib.auth.models import User
@@ -19,6 +17,8 @@ from .serializers import BookSerializer, DefaultBookSerializer, MagazineSerializ
     BookReadOnlySerializer, BookHiddenSerializer, BookActionKwargsSerializer, CityWritablePkSerializer, \
     BookWithGenreSerializer, DefaultMagazineSerializer, BookWithGenreListSerializer, BookmarkSerializer, \
     DisableOptimizationBookSerializer
+
+settings.DEBUG = True
 
 
 class TestBookObjects(TestCase):
@@ -277,7 +277,7 @@ class TestOptimizeQuerySet(TestCase):
 
     def test_optimize_queryset(self):
         reset_queries()
-        list(BookWithGenreSerializer(self.book))
+        _ = BookWithGenreSerializer(self.book).data
         self.assertEqual(len(connection.queries), 4)
 
     def test_simple_queryset(self):
@@ -289,6 +289,11 @@ class TestOptimizeQuerySet(TestCase):
         reset_queries()
         _ = BookWithGenreSerializer(Book.objects.all(), many=True).data
         self.assertEqual(len(connection.queries), 4)
+
+    def test_multiple_queryset_by_list(self):
+        reset_queries()
+        _ = BookWithGenreSerializer(list(Book.objects.all()), many=True).data
+        self.assertEqual(len(connection.queries), 5)
 
     def test_multiple_queryset_by_list_serializer(self):
         reset_queries()

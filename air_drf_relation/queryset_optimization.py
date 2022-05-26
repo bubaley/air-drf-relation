@@ -1,4 +1,4 @@
-from django.db.models import QuerySet
+from django.db.models import QuerySet, Case, When
 from rest_framework import serializers
 from django.db import models
 
@@ -12,6 +12,11 @@ def optimize_queryset(queryset, serializer):
         queryset = serializer.Meta.model.objects.filter(pk=queryset.pk)
         queryset = queryset.select_related(*data['select']).prefetch_related(*data['prefetch']).first()
     elif issubclass(queryset_type, QuerySet):
+        queryset = queryset.select_related(*data['select']).prefetch_related(*data['prefetch'])
+    elif issubclass(queryset_type, list):
+        pks = [v.pk for v in queryset]
+        preserved = Case(*[When(pk=pk, then=pos) for pos, pk in enumerate(pks)])
+        queryset = serializer.Meta.model.objects.filter(pk__in=pks).order_by(preserved)
         queryset = queryset.select_related(*data['select']).prefetch_related(*data['prefetch'])
     return queryset
 
