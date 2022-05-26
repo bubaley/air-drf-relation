@@ -1,6 +1,5 @@
-from django.core.exceptions import ObjectDoesNotExist
 from rest_framework.relations import PrimaryKeyRelatedField, Field
-from air_drf_relation.utils import get_related_object
+from air_drf_relation.utils import get_pk_from_data
 
 
 class AirRelatedField(PrimaryKeyRelatedField):
@@ -35,12 +34,8 @@ class AirRelatedField(PrimaryKeyRelatedField):
         return self.pk_only
 
     def to_internal_value(self, data):
-        try:
-            return get_related_object(data, queryset=self.queryset)
-        except ObjectDoesNotExist:
-            self.fail('does_not_exist', pk_value=data)
-        except (TypeError, ValueError):
-            self.fail('incorrect_type', data_type=type(data).__name__)
+        data = get_pk_from_data(data, self.queryset.model._meta.pk.name)
+        return super(AirRelatedField, self).to_internal_value(data)
 
     def to_representation(self, value):
         if not self.pk_only:
