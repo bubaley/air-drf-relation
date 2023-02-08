@@ -8,6 +8,7 @@ class FilmInformation:
     budget: float
     rating: str
     description: str
+    active: bool = True
     # kek: int = 1
 
 

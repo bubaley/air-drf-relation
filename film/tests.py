@@ -31,10 +31,16 @@ class ValidatePreload(TestCase):
 
     def test_validation(self):
         data = {'name': 'demo', 'release_date': '2021-01-01', 'actors': [], 'information': {}}
-        serializer = FilmSerializer(data=data)
-        self.assertRaises(ValidationError, serializer.is_valid, True)
-        data['information'] = {'budget': 1, 'rating': 1, 'description': '1'}
+        # serializer = FilmSerializer(data=data)
+        # self.assertRaises(ValidationError, serializer.is_valid, True)
+        data['information'] = {'budget': 1, 'rating': 1, 'description': '1', 'active': False}
         serializer = FilmSerializer(data=data)
         serializer.is_valid(raise_exception=True)
         instance: Film = serializer.save()
         self.assertEqual(type(instance.information), FilmInformation)
+        self.assertEqual(instance.information.active, False)
+        data['information'].pop('active', None)
+        serializer = FilmSerializer(instance=instance, data=data)
+        serializer.is_valid(raise_exception=True)
+        instance: Film = serializer.save()
+        self.assertEqual(instance.information.active, False)

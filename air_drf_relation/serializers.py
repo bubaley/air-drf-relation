@@ -218,10 +218,20 @@ class AirDynamicSerializer(AirEmptySerializer):
 class AirDataclassSerializer(DataclassSerializer):
     def to_internal_value(self, data: Dict[str, Any]) -> T:
         instance = super(AirDataclassSerializer, self).to_internal_value(data)
+        dataclass = self.Meta.dataclass
         for key in instance.__dict__.keys():
             if getattr(instance, key) == empty:
-                setattr(instance, key, None)
+                if self.instance:
+                    value = getattr(self.instance, key, None)
+                else:
+                    value = getattr(dataclass, key, None)
+                setattr(instance, key, value)
         return instance
+
+    def run_validation(self, data=empty):
+        if self.parent and getattr(self.parent, 'instance', None):
+            self.instance = getattr(self.parent.instance, self.source, None)
+        return super(AirDataclassSerializer, self).run_validation(data)
 
     def to_representation(self, instance):
         if instance is not None:
