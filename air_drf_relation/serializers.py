@@ -1,6 +1,6 @@
 from typing import TypeVar, Dict, Any
 from uuid import UUID
-
+from dataclasses import is_dataclass
 from rest_framework.fields import empty
 from rest_framework.relations import PrimaryKeyRelatedField
 from rest_framework.utils import model_meta
@@ -225,7 +225,8 @@ class AirDataclassSerializer(DataclassSerializer):
 
     def to_representation(self, instance):
         if instance is not None:
-            for el in self._writable_fields:
-                if el.field_name not in instance:
-                    instance[el.field_name] = None
+            if isinstance(instance, dict):
+                for el in self._writable_fields:
+                    if el.field_name not in instance:
+                        instance[el.field_name] = None
         return super(AirDataclassSerializer, self).to_representation(instance)
