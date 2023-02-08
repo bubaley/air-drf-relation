@@ -1,16 +1,21 @@
+from typing import TypeVar, Dict, Any
 from uuid import UUID
 
+from rest_framework.fields import empty
 from rest_framework.relations import PrimaryKeyRelatedField
 from rest_framework.utils import model_meta
 from rest_framework import serializers
 from django.db.models import ForeignKey
+from rest_framework_dataclasses.serializers import DataclassSerializer
+from rest_framework_dataclasses.types import Dataclass
 
 from air_drf_relation.context_builder import set_empty_request_in_kwargs
 from air_drf_relation.extra_kwargs import ExtraKwargsFactory
 from air_drf_relation.fields import AirRelatedField
 from air_drf_relation.preload_objects_manager import PreloadObjectsManager
-
 from air_drf_relation.queryset_optimization import optimize_queryset
+
+T = TypeVar('T', bound=Dataclass)
 
 
 class AirModelSerializer(serializers.ModelSerializer):
@@ -60,6 +65,8 @@ class AirModelSerializer(serializers.ModelSerializer):
         super(AirModelSerializer, self).is_valid(raise_exception=raise_exception)
 
     def _update_fields(self):
+        if not hasattr(self.Meta, 'model'):
+            return
         info = model_meta.get_field_info(self.Meta.model)
         hidden_fields = [field_name for field_name, field in self.fields.items() if
                          hasattr(field, 'hidden') and getattr(field, 'hidden', True)]
@@ -206,3 +213,19 @@ class AirDynamicSerializer(AirEmptySerializer):
             self.fields.fields[key].field_name = key
             self.fields.fields[key].source_attrs = [key]
         super(AirDynamicSerializer, self).__init__(*args, **kwargs)
+
+
+class AirDataclassSerializer(DataclassSerializer):
+    def to_internal_value(self, data: Dict[str, Any]) -> T:
+        instance = super(AirDataclassSerializer, self).to_internal_value(data)
+        for key in instance.__dict__.keys():
+            if getattr(instance, key) == empty:
+                setattr(instance, key, None)
+        return instance
+
+    def to_representation(self, instance):
+        if instance is not None:
+            for el in self._writable_fields:
+                if el.field_name not in instance:
+                    instance[el.field_name] = None
+        return super(AirDataclassSerializer, self).to_representation(instance)

@@ -44,6 +44,7 @@ INSTALLED_APPS = [
     'device',
     'task',
     'table',
+    'film',
     'air_drf_relation'
 ]
 

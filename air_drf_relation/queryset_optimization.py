@@ -47,7 +47,7 @@ def _get_field_serializer(value):
     current_type = type(value)
     if issubclass(current_type, serializers.PrimaryKeyRelatedField) and hasattr(value, 'serializer'):
         return value.serializer, False
-    elif issubclass(current_type, serializers.Serializer):
+    elif issubclass(current_type, serializers.ModelSerializer):
         return value, False
     elif issubclass(current_type, serializers.ListSerializer):
         return value.child, True
