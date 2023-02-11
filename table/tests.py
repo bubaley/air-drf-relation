@@ -90,6 +90,7 @@ class ValidatePreload(TestCase):
     @queries_count
     def test_custom_serializer_preload_objects(self):
         data = [{'leg': get_id(self._legs_count), 'material': get_id(self._materials_count),
+                 'legs': [get_id(self._legs_count), 3],
                  'tables': [{'material': get_id(self._materials_count), 'color': get_id(self._colors_count),
                              'legs': [get_id(self._legs_count) for _ in range(10)]}
                             for _ in range(5)]} for _ in range(300)]

@@ -1,4 +1,4 @@
-from rest_framework.relations import PrimaryKeyRelatedField
+from rest_framework.relations import PrimaryKeyRelatedField, ManyRelatedField
 
 from air_drf_relation.serializers import AirModelSerializer, AirEmptySerializer
 from air_drf_relation.fields import AirRelatedField
@@ -41,5 +41,6 @@ class TableSimpleSerializer(AirModelSerializer):
 
 class CustomSerializer(AirEmptySerializer):
     leg = PrimaryKeyRelatedField(queryset=Leg.objects)
+    legs = ManyRelatedField(child_relation=PrimaryKeyRelatedField(queryset=Leg.objects))
     tables = TableSimpleSerializer(many=True)
     material = PrimaryKeyRelatedField(queryset=Material.objects)
