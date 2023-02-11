@@ -2,7 +2,7 @@ from random import randint
 from django.test import TestCase
 from air_drf_relation.preload_objects_manager import PreloadObjectsManager
 from table.models import Material, Table, Company, Color, Leg
-from table.serializers import TableSerializer, TableWithLegsSerializer
+from table.serializers import TableSerializer, TableWithLegsSerializer, CustomSerializer
 from air_drf_relation.decorators import queries_count
 from django.conf import settings
 from django.db import reset_queries, connection
@@ -86,6 +86,16 @@ class ValidatePreload(TestCase):
         serializer = TableWithLegsSerializer(data=data, many=True)
         serializer.is_valid(raise_exception=True)
         self.assertGreater(len(connection.queries), 2)
+
+    @queries_count
+    def test_custom_serializer_preload_objects(self):
+        data = [{'leg': get_id(self._legs_count), 'material': get_id(self._materials_count),
+                 'tables': [{'material': get_id(self._materials_count), 'color': get_id(self._colors_count),
+                             'legs': [get_id(self._legs_count) for _ in range(10)]}
+                            for _ in range(5)]} for _ in range(300)]
+        serializer = CustomSerializer(data=data, many=True)
+        serializer.is_valid(raise_exception=True)
+        self.assertEqual(len(connection.queries), 3)
 
 
 def get_id(count):

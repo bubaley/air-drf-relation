@@ -1,6 +1,5 @@
 from typing import TypeVar, Dict, Any
 from uuid import UUID
-from dataclasses import is_dataclass
 from rest_framework.fields import empty
 from rest_framework.relations import PrimaryKeyRelatedField
 from rest_framework.utils import model_meta
@@ -18,7 +17,44 @@ from air_drf_relation.queryset_optimization import optimize_queryset
 T = TypeVar('T', bound=Dataclass)
 
 
-class AirModelSerializer(serializers.ModelSerializer):
+class AirSerializer(serializers.Serializer):
+    def __init__(self, *args, **kwargs):
+        self._preload_objects_manager = None
+        self.preload_objects = kwargs.pop('preload_objects', None)
+        super().__init__(*args, **kwargs)
+
+    def update(self, instance, validated_data):
+        raise NotImplementedError('`update()` must be implemented.')
+
+    def create(self, validated_data):
+        raise NotImplementedError('`create()` must be implemented.')
+
+    def is_valid(self, raise_exception=False):
+        if self.preload_objects is not False:
+            self._preload_objects_manager = PreloadObjectsManager.get_preload_objects_manager(self).init()
+        super(AirSerializer, self).is_valid(raise_exception)
+
+    @classmethod
+    def many_init(cls, *args, **kwargs):
+        class Meta:
+            pass
+        meta = getattr(cls, 'Meta', None)
+        if not meta:
+            meta = Meta()
+            setattr(cls, 'Meta', meta)
+        if not hasattr(meta, 'list_serializer_class'):
+            setattr(meta, 'list_serializer_class', AirListSerializer)
+        serializer = super(AirSerializer, cls).many_init(*args, **kwargs)
+
+
+        if hasattr(serializer, 'parent') and serializer.parent is None:
+            if serializer.child and \
+                    hasattr(serializer.child, 'optimize_queryset') and serializer.child.optimize_queryset:
+                serializer.instance = optimize_queryset(serializer.instance, serializer.child)
+        return serializer
+
+
+class AirModelSerializer(serializers.ModelSerializer, AirSerializer):
     class Meta:
         model = None
         fields = ()
@@ -30,7 +66,6 @@ class AirModelSerializer(serializers.ModelSerializer):
     def __init__(self, *args, **kwargs):
         self.action = kwargs.pop('action', None)
         self.user = kwargs.pop('user', None)
-        self._preload_objects_manager = None
         self.optimize_queryset = True
         if 'optimize_queryset' in kwargs:
             self.optimize_queryset = kwargs.pop('optimize_queryset', True)
@@ -61,7 +96,6 @@ class AirModelSerializer(serializers.ModelSerializer):
 
     def is_valid(self, raise_exception=False):
         self._filter_queryset_by_fields()
-        self._preload_objects_manager = PreloadObjectsManager.get_preload_objects_manager(self).init()
         super(AirModelSerializer, self).is_valid(raise_exception=raise_exception)
 
     def _update_fields(self):
@@ -155,19 +189,6 @@ class AirModelSerializer(serializers.ModelSerializer):
             return cls.many_init(*args, **kwargs)
         return super().__new__(cls, *args, **kwargs)
 
-    @classmethod
-    def many_init(cls, *args, **kwargs):
-        meta = getattr(cls, 'Meta', None)
-        if not hasattr(meta, 'list_serializer_class'):
-            setattr(meta, 'list_serializer_class', AirListSerializer)
-        serializer = super(AirModelSerializer, cls).many_init(*args, **kwargs)
-
-        if hasattr(serializer, 'parent') and serializer.parent is None:
-            if serializer.child and \
-                    hasattr(serializer.child, 'optimize_queryset') and serializer.child.optimize_queryset:
-                serializer.instance = optimize_queryset(serializer.instance, serializer.child)
-        return serializer
-
     def to_representation(self, instance):
         if getattr(self, 'parent') is None and self.optimize_queryset:
             instance = optimize_queryset(instance, self)
@@ -180,18 +201,20 @@ class AirModelSerializer(serializers.ModelSerializer):
 
 class AirListSerializer(serializers.ListSerializer):
     def __init__(self, *args, **list_kwargs):
+        self.preload_objects = list_kwargs.pop('preload_objects', None)
         super(AirListSerializer, self).__init__(*args, **list_kwargs)
         self._preload_objects_manager = None
 
     def is_valid(self, raise_exception=False):
-        self._preload_objects_manager = PreloadObjectsManager.get_preload_objects_manager(self).init()
+        if self.preload_objects is not False and getattr(self.child, 'preload_objects', None) is not False:
+            self._preload_objects_manager = PreloadObjectsManager.get_preload_objects_manager(self).init()
         super(AirListSerializer, self).is_valid(raise_exception=raise_exception)
 
     def update(self, instance, validated_data):
         super(AirListSerializer, self).update(instance, validated_data)
 
 
-class AirEmptySerializer(serializers.Serializer):
+class AirEmptySerializer(AirSerializer):
 
     def __init__(self, *args, **kwargs):
         super(AirEmptySerializer, self).__init__(*args, **kwargs)

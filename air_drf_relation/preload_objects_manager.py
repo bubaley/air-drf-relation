@@ -36,9 +36,10 @@ class PreloadObjectsManager:
             for field in current_fields:
                 field_type = type(field)
                 if issubclass(field_type, serializers.PrimaryKeyRelatedField):
-                    val = field.get_value(value)
+                    val = field.get_value(value) if isinstance(value, dict) else value
                     self._append_object_pks(field.queryset, val)
                 elif issubclass(field_type, serializers.ManyRelatedField):
+                    # print(value)
                     val = field.get_value(value)
                     self._append_object_pks(field.child_relation.queryset, val)
                 elif issubclass(field_type, serializers.Serializer):
