@@ -1,4 +1,5 @@
 import uuid
+from collections.abc import Mapping, Sequence
 
 
 def get_pk_from_data(data, pk_name):
@@ -14,15 +15,13 @@ def create_dict_from_list(values: list, value_data) -> dict:
     return result
 
 
-def set_values_to_class(instance, values: dict):
-    for key, value in values.items():
-        setattr(instance, key, value)
-    return instance
-
-
-def is_uuid(value: str) -> bool:
-    try:
-        uuid.UUID(value)
-        return True
-    except ValueError:
-        return False
+def stringify_uuids(value):
+    if isinstance(value, dict):
+        for k in value.keys():
+            value[k] = stringify_uuids(value[k])
+    elif isinstance(value, list) and not isinstance(value, str):
+        for i, v in enumerate(value):
+            value[i] = stringify_uuids(v)
+    elif isinstance(value, uuid.UUID):
+        return str(value)
+    return value

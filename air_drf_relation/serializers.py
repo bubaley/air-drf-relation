@@ -13,6 +13,7 @@ from air_drf_relation.extra_kwargs import ExtraKwargsFactory
 from air_drf_relation.fields import AirRelatedField
 from air_drf_relation.preload_objects_manager import PreloadObjectsManager
 from air_drf_relation.queryset_optimization import optimize_queryset
+from air_drf_relation.utils import stringify_uuids
 
 T = TypeVar('T', bound=Dataclass)
 
@@ -34,10 +35,15 @@ class AirSerializer(serializers.Serializer):
             self._preload_objects_manager = PreloadObjectsManager.get_preload_objects_manager(self).init()
         super(AirSerializer, self).is_valid(raise_exception)
 
+    def to_representation(self, instance):
+        data = super().to_representation(instance)
+        return stringify_uuids(data)
+
     @classmethod
     def many_init(cls, *args, **kwargs):
         class Meta:
             pass
+
         meta = getattr(cls, 'Meta', None)
         if not meta:
             meta = Meta()
@@ -45,7 +51,6 @@ class AirSerializer(serializers.Serializer):
         if not hasattr(meta, 'list_serializer_class'):
             setattr(meta, 'list_serializer_class', AirListSerializer)
         serializer = super(AirSerializer, cls).many_init(*args, **kwargs)
-
 
         if hasattr(serializer, 'parent') and serializer.parent is None:
             if serializer.child and \
@@ -96,7 +101,7 @@ class AirModelSerializer(serializers.ModelSerializer, AirSerializer):
 
     def is_valid(self, raise_exception=False):
         self._filter_queryset_by_fields()
-        super(AirModelSerializer, self).is_valid(raise_exception=raise_exception)
+        return super(AirModelSerializer, self).is_valid(raise_exception=raise_exception)
 
     def _update_fields(self):
         if not hasattr(self.Meta, 'model'):
@@ -192,11 +197,7 @@ class AirModelSerializer(serializers.ModelSerializer, AirSerializer):
     def to_representation(self, instance):
         if getattr(self, 'parent') is None and self.optimize_queryset:
             instance = optimize_queryset(instance, self)
-        data = super(AirModelSerializer, self).to_representation(instance)
-        for el in data:
-            if type(data[el]) == UUID:
-                data[el] = str(data[el])
-        return data
+        return super(AirModelSerializer, self).to_representation(instance)
 
 
 class AirListSerializer(serializers.ListSerializer):

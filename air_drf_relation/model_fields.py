@@ -19,8 +19,8 @@ class AirDataclassField(models.JSONField):
         if value is None:
             return value
         obj = json.loads(value)
-        if obj == self._get_default():
-            return obj
+        if obj is None:
+            return None
         return from_dict(data_class=self.data_class, data=obj)
 
     def to_python(self, value):

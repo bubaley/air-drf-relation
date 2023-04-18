@@ -19,15 +19,11 @@ class ValidatePreload(TestCase):
     def test_to_representation(self):
         result = FilmSerializer(self.film).data
         self.assertEqual(result['information'], None)
-        self.film.information = FilmInformation(1, '1', '1')
+        information = FilmInformation(1, '1', '1')
+        self.film.information = information
         self.film.save()
-        # self.film.information = {'budget': 1}
-        # self.film.save()
-        # self.film.refresh_from_db()
-        information = FilmSerializer(self.film).data['information']
-        # keys = ['rating', 'description']
-        # values = [getattr(information, v) for v in keys]
-        # self.assertEqual(values, [None], None)
+        self.film.information = None
+        self.film.save()
 
     def test_validation(self):
         data = {'name': 'demo', 'release_date': '2021-01-01', 'actors': [], 'information': {}}

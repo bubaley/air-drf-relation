@@ -194,6 +194,7 @@ class TestMagazineObjects(TestCase):
         self.author = Author.objects.create(name='author')
         self.author2 = Author.objects.create(name='inactive author', active=False)
         self.city = City.objects.create(name='city')
+        self.city2 = City.objects.create(name='city2')
 
     def test_check_required_fields(self):
         data = {'name': 'magazine'}
@@ -245,12 +246,15 @@ class TestMagazineObjects(TestCase):
         self.assertEqual(serializer.data.get('name', False), False)
 
     def test_uuid_serialization(self):
-        data = {'name': 'default', 'author': self.author.pk, 'city': str(self.city.pk)}
+        data = {'name': 'default', 'author': self.author.pk, 'city': str(self.city.pk), 'available_cities': [
+            str(self.city.pk), str(self.city2.pk),
+        ]}
         extra_kwargs = {'city': {'pk_only': True}, 'author': {'pk_only': True}}
         serializer = DefaultMagazineSerializer(data=data, extra_kwargs=extra_kwargs)
         serializer.is_valid(raise_exception=True)
         serializer.save()
         self.assertEqual(type(serializer.data['city']), str)
+        self.assertTrue(all([type(v) == str for v in serializer.data['available_cities']]))
 
 
 class TestOptimizeQuerySet(TestCase):

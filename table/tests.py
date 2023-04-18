@@ -74,7 +74,7 @@ class ValidatePreload(TestCase):
         self.assertEqual(len(connection.queries), 2)
 
     @queries_count
-    def test_toogle_preload_objects(self):
+    def test_toggle_preload_objects(self):
         data = [{'name': v, 'material': get_id(self._materials_count), 'color': get_id(self._colors_count),
                  'legs': [{'color': get_id(self._colors_count), 'name': '1', 'code': 1} for _ in range(5)]} for v in
                 range(300)]

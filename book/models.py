@@ -35,6 +35,7 @@ class Magazine(models.Model):
     name = models.CharField(max_length=255)
     author = models.ForeignKey(Author, related_name='magazines', on_delete=models.CASCADE)
     city = models.ForeignKey(City, related_name='magazines', on_delete=models.CASCADE)
+    available_cities = models.ManyToManyField(City, related_name='available_magazines')
 
 
 class Bookmark(models.Model):
