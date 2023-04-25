@@ -1,5 +1,4 @@
 import uuid
-from collections.abc import Mapping, Sequence
 
 
 def get_pk_from_data(data, pk_name):
@@ -25,3 +24,11 @@ def stringify_uuids(value):
     elif isinstance(value, uuid.UUID):
         return str(value)
     return value
+
+
+def is_uuid(value: str) -> bool:
+    try:
+        uuid.UUID(value)
+        return True
+    except ValueError:
+        return False
