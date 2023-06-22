@@ -1,5 +1,4 @@
 from typing import TypeVar, Dict, Any
-from uuid import UUID
 from rest_framework.fields import empty
 from rest_framework.relations import PrimaryKeyRelatedField
 from rest_framework.utils import model_meta
@@ -33,7 +32,7 @@ class AirSerializer(serializers.Serializer):
     def is_valid(self, raise_exception=False):
         if self.preload_objects is not False:
             self._preload_objects_manager = PreloadObjectsManager.get_preload_objects_manager(self).init()
-        super(AirSerializer, self).is_valid(raise_exception)
+        return super(AirSerializer, self).is_valid(raise_exception=raise_exception)
 
     def to_representation(self, instance):
         data = super().to_representation(instance)
@@ -209,7 +208,7 @@ class AirListSerializer(serializers.ListSerializer):
     def is_valid(self, raise_exception=False):
         if self.preload_objects is not False and getattr(self.child, 'preload_objects', None) is not False:
             self._preload_objects_manager = PreloadObjectsManager.get_preload_objects_manager(self).init()
-        super(AirListSerializer, self).is_valid(raise_exception=raise_exception)
+        return super(AirListSerializer, self).is_valid(raise_exception=raise_exception)
 
     def update(self, instance, validated_data):
         super(AirListSerializer, self).update(instance, validated_data)

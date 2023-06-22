@@ -4,11 +4,11 @@ build==0.5.1
 certifi==2021.5.30
 chardet==4.0.0
 colorama==0.4.4
-dacite==1.8.0
-Django==3.2.4
+dacite==1.8.1
+Django==4.2.2
 django-environ==0.4.5
 django-filter==21.1
-djangorestframework==3.12.4
+djangorestframework==3.14.0
 djangorestframework-dataclasses==1.2.0
 docutils==0.17.1
 idna==2.10

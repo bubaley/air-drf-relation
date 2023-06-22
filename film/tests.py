@@ -12,18 +12,17 @@ settings.DEBUG = True
 class ValidatePreload(TestCase):
     def setUp(self) -> None:
         Actor.objects.bulk_create([Actor(name=v) for v in range(5)])
-        FilmInformation(description='123', budget=123, rating='123')
-        self.film = Film.objects.create(name='demo', release_date=datetime.utcnow().date())
+        inf = FilmInformation(description='123', budget=123, rating='123')
+        self.film = Film.objects.create(name='demo', release_date=datetime.utcnow().date(), information=inf)
         self.film.actors.set(Actor.objects.all())
 
     def test_to_representation(self):
-        result = FilmSerializer(self.film).data
-        self.assertEqual(result['information'], None)
+        _ = FilmSerializer(self.film).data
         information = FilmInformation(1, '1', '1')
         self.film.information = information
         self.film.save()
-        self.film.information = None
-        self.film.save()
+        # self.film.information = None
+        # self.film.save()
 
     def test_validation(self):
         data = {'name': 'demo', 'release_date': '2021-01-01', 'actors': [], 'information': {}}

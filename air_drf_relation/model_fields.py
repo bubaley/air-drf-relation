@@ -3,6 +3,8 @@ from django.db import models
 from dataclasses import asdict, is_dataclass
 import json
 
+from django.db.models.fields.json import KeyTransform
+
 
 class AirDataclassField(models.JSONField):
 
@@ -33,5 +35,5 @@ class AirDataclassField(models.JSONField):
 
     def get_prep_value(self, value):
         if not is_dataclass(value):
-            return json.dumps(self._get_default())
-        return json.dumps(asdict(value))
+            return self._get_default()
+        return asdict(value)
