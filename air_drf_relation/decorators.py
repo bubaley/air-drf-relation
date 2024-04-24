@@ -1,8 +1,11 @@
+from functools import wraps
+
 from django import db
 from datetime import datetime
 
 
 def queries_count(func):
+    @wraps(func)
     def inner(*args, **kwargs):
         init_count = len(db.connection.queries)
         start_time = datetime.utcnow()
