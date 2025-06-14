@@ -14,7 +14,7 @@ Transform your DRF APIs into lightning-fast endpoints by default. Air DRF Relati
 
 ## 📋 Table of Contents
 
-### Core Features
+### 🔥 Core Features
 
 1. **[AirModelSerializer N+1 Queries Optimization](#1-airmodelserializer-n1-queries-optimization)** - Automatic select_related/prefetch_related optimization based on serializer structure
 2. **[AirModelSerializer Intelligent Batch Preloading](#2-airmodelserializer-intelligent-batch-preloading)** - Smart batch loading during validation to eliminate duplicate queries
