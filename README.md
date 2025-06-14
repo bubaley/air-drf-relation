@@ -20,7 +20,7 @@ Turn your slow DRF APIs into blazing-fast endpoints by **default**. Air DRF Rela
 # Before: Standard DRF - N+1 queries nightmare
 class BookSerializer(serializers.ModelSerializer):
     author = serializers.PrimaryKeyRelatedField(queryset=Author.objects)
-    
+
     class Meta:
         model = Book
         fields = ('id', 'title', 'author')
@@ -32,7 +32,7 @@ serializer = BookSerializer(books, many=True)
 # After: Air DRF Relation - Automatic optimization
 class BookSerializer(AirModelSerializer):
     author = serializers.PrimaryKeyRelatedField(queryset=Author.objects)
-    
+
     class Meta:
         model = Book
         fields = ('id', 'title', 'author')
