@@ -38,21 +38,25 @@ jobs:
           tag-prefix: "v"
           output-file: "false"
 
+      - name: Set version as environment variable
+        run: echo "VERSION=${{ steps.changelog.outputs.version }}" >> $GITHUB_ENV
+
+      - name: Update version in pyproject.toml
+        run: sed -i "s/^version = \".*\"/version = \"$VERSION\"/" pyproject.toml
+
       - name: Update version in Python file
-        run: |
-          VERSION="${{ steps.changelog.outputs.version }}"
-          FILE="air_drf_relation/__init__.py"
-          sed -i "s/__version__ = \".*\"/__version__ = \"$VERSION\"/" $FILE
+        run: sed -i "s/__version__ = \".*\"/__version__ = \"$VERSION\"/" air_drf_relation/__init__.py
 
       - name: Commit all changes together
+        if: ${{ steps.changelog.outputs.skipped == 'false' }}
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git add pyproject.toml air_drf_relation/__init__.py
-          git commit -m "chore(release): v$VERSION"
-          git tag "v$VERSION"
+          git diff --cached --quiet || git commit -m "chore(release): v$VERSION [skip ci]"
+          git tag -f "v$VERSION"
           git push
-          git push --tags
+          git push --force origin "v$VERSION"
 
       - name: Create Release
         uses: softprops/action-gh-release@v2

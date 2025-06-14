@@ -96,9 +96,6 @@ jobs:
       - name: Install Django ${{ matrix.django-version }}
         run: uv run pip install "django==${{ matrix.django-version }}.*"
 
-      - name: Run migrations
-        run: uv run manage.py migrate
-
       - name: Run tests with coverage
         run: |
           uv run coverage run manage.py test
