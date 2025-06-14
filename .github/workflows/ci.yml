@@ -92,7 +92,7 @@ jobs:
         run: uv sync --dev --locked
 
       - name: Install Django ${{ matrix.django-version }}
-        run: uv add "django==${{ matrix.django-version }}.*"
+        run: uv run pip install "django==${{ matrix.django-version }}.*"
 
       - name: Run migrations
         run: uv run manage.py migrate
