@@ -58,9 +58,15 @@ jobs:
         run: uv run pre-commit run --all-files --show-diff-on-failure
 
   test:
-    name: Unit Tests & Coverage
+    name: Test Python ${{ matrix.python-version }} / Django ${{ matrix.django-version }}
     runs-on: ubuntu-latest
     timeout-minutes: 15
+
+    strategy:
+      fail-fast: false
+      matrix:
+        python-version: ["3.9", "3.10", "3.11", "3.12"]
+        django-version: ["4.2", "5.0", "5.1"]
 
     steps:
       - name: Checkout
@@ -71,13 +77,16 @@ jobs:
         with:
           enable-cache: true
 
-      - name: Set up Python
+      - name: Set up Python ${{ matrix.python-version }}
         uses: actions/setup-python@v5
         with:
-          python-version-file: "pyproject.toml"
+          python-version: ${{ matrix.python-version }}
 
       - name: Install packages
         run: uv sync --dev --locked
+
+      - name: Install Django ${{ matrix.django-version }}
+        run: uv add "django==${{ matrix.django-version }}.*"
 
       - name: Run migrations
         run: uv run manage.py migrate
@@ -95,7 +104,7 @@ jobs:
           token: ${{ secrets.CODECOV_TOKEN }}
           files : ./coverage.xml
           flags: unittests
-          name: codecov-umbrella
+          name: codecov-python-${{ matrix.python-version }}-django-${{ matrix.django-version }}
           fail_ci_if_error: false
 
   all-checks:

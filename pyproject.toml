@@ -1,26 +1,27 @@
 [build-system]
-requires = ["hatchling"]
 build-backend = "hatchling.build"
+
+requires = [ "hatchling" ]
 
 [project]
 name = "air-drf-relation"
 version = "0.7.0"
 description = "Enhanced Django REST Framework serializers with advanced relation handling, queryset optimization, and type safety"
 readme = "README.md"
-authors = [{ name = "bubaley", email = "bubaley.fu@gmail.com" }]
-maintainers = [{ name = "bubaley", email = "bubaley.fu@gmail.com" }]
-license = { text = "MIT" }
-requires-python = ">=3.9"
 keywords = [
     "django",
-    "rest-framework",
     "drf",
-    "serializer",
-    "relations",
-    "queryset-optimization",
-    "preloading",
     "performance",
+    "preloading",
+    "queryset-optimization",
+    "relations",
+    "rest-framework",
+    "serializer",
 ]
+license = { text = "MIT" }
+maintainers = [ { name = "bubaley", email = "bubaley.fu@gmail.com" } ]
+authors = [ { name = "bubaley", email = "bubaley.fu@gmail.com" } ]
+requires-python = ">=3.9"
 classifiers = [
     "Development Status :: 4 - Beta",
     "Framework :: Django",
@@ -29,7 +30,7 @@ classifiers = [
     "Framework :: Django :: 5.1",
     "Intended Audience :: Developers",
     "License :: OSI Approved :: MIT License",
-    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3 :: Only",
     "Programming Language :: Python :: 3.9",
     "Programming Language :: Python :: 3.10",
     "Programming Language :: Python :: 3.11",
@@ -41,41 +42,40 @@ classifiers = [
 ]
 
 dependencies = [
-    "django>=4.2.2",
-    "djangorestframework>=3.14.0",
-    "django-filter>=21.1",
     "dacite>=1.8.1",
+    "django>=4.2.2",
+    "django-filter>=21.1",
+    "djangorestframework>=3.14.0",
     "djangorestframework-dataclasses>=1.2.0",
 ]
 
-[project.urls]
-Homepage = "https://github.com/bubaley/air-drf-relation"
-Repository = "https://github.com/bubaley/air-drf-relation.git"
-Documentation = "https://github.com/bubaley/air-drf-relation#readme"
+urls.Documentation = "https://github.com/bubaley/air-drf-relation#readme"
+urls.Homepage = "https://github.com/bubaley/air-drf-relation"
+urls.Repository = "https://github.com/bubaley/air-drf-relation.git"
 
 [dependency-groups]
+# Ruff configuration
 dev = [
     "coverage>=7.9.1",
+    "django-environ>=0.12.0",
     "pillow>=11.2.1",
     "pre-commit>=4.2.0",
     "ruff>=0.11.13",
-    "django-environ>=0.12.0",
 ]
 
-# Ruff configuration
 [tool.ruff]
-target-version = "py39"
+target-version = "py313"
 line-length = 120
 indent-width = 4
 fix = true
 format.quote-style = "single"
 format.line-ending = "auto"
 format.skip-magic-trailing-comma = false
-lint.extend-select = ["I"]
-lint.extend-per-file-ignores."core/settings/*.py" = ["F403", "F405"]
+lint.extend-select = [ "I" ]
+lint.extend-per-file-ignores."core/settings/*.py" = [ "F403", "F405" ]
+# Bandit configuration
 lint.dummy-variable-rgx = "^(_+|(_+[a-zA-Z0-9_]*[a-zA-Z0-9]+?))$"
 
-# Bandit configuration
 [tool.bandit]
-skips = ["B101"]
-exclude_dirs = ["tests", "*/tests/*", "*/migrations/*"]
+skips = [ "B101" ]
+exclude_dirs = [ "tests", "*/tests/*", "*/migrations/*" ]
