@@ -6,18 +6,61 @@
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 [![Code style: ruff](https://img.shields.io/endpoint?url=https://raw.githubusercontent.com/astral-sh/ruff/main/assets/badge/v2.json)](https://github.com/astral-sh/ruff)
 
-**Enhanced Django REST Framework serializers with advanced relation handling and queryset optimization.**
+Air DRF Relation extends and simplifies Django REST Framework interactions through several key enhancements: **automatic select_related/prefetch_related optimization**, **AirRelatedField** that combines PrimaryKeyRelatedField flexibility with full serialized output, **intelligent batch preloading** during validation, and **action-based field configuration**. Transform your DRF APIs from slow to lightning-fast with minimal code changes.
 
-Air DRF Relation provides a comprehensive set of enhanced serializers and fields for Django REST Framework that significantly improve performance and developer experience through advanced features like automatic queryset optimization and intelligent preloading.
+## 🚀 Solve the N+1 Queries Problem
 
-## ✨ Features
+**Advanced Django REST Framework enhancement that automatically optimizes your API performance.**
 
-- 🚀 **Automatic Queryset Optimization** - Intelligent `select_related` and `prefetch_related` based on serializer structure
-- ⚡ **Smart Object Preloading** - Eliminate N+1 queries with automatic batch loading
-- 🔧 **Enhanced Field Types** - Extended relation fields with advanced configuration options
-- 🎯 **Action-Based Configuration** - Different serializer behavior per DRF ViewSet action
-- 📊 **Performance Monitoring** - Built-in tools for analyzing serialization performance
-- 🎨 **Dynamic Serializers** - Runtime field configuration for flexible APIs
+Turn your slow DRF APIs into blazing-fast endpoints by **default**. Air DRF Relation eliminates the N+1 query problem, reduces database load by up to **90%**, and provides intelligent relation handling that just works.
+
+### ⚡ Before vs After
+
+```python
+# Before: Standard DRF - N+1 queries nightmare
+class BookSerializer(serializers.ModelSerializer):
+    author = serializers.PrimaryKeyRelatedField(queryset=Author.objects)
+    
+    class Meta:
+        model = Book
+        fields = ('id', 'title', 'author')
+
+books = Book.objects.all() # No select_related here!
+serializer = BookSerializer(books, many=True)
+# 😱 1001 database queries for 1000 books
+
+# After: Air DRF Relation - Automatic optimization
+class BookSerializer(AirModelSerializer):
+    author = serializers.PrimaryKeyRelatedField(queryset=Author.objects)
+    
+    class Meta:
+        model = Book
+        fields = ('id', 'title', 'author')
+
+books = Book.objects.all()
+serializer = BookSerializer(books, many=True)
+# 🚀 Just 2 database queries for 1000 books
+```
+
+## ✨ Why Choose Air DRF Relation?
+
+### 🚀 **Zero-Config Performance Boost**
+Just replace `ModelSerializer` with `AirModelSerializer` and watch your API fly. **No manual optimization needed.**
+
+### ⚡ **Eliminate N+1 Queries Forever**
+Automatic `select_related` and `prefetch_related` optimization based on your serializer structure. **Up to 90% fewer queries depending on your model structure.**
+
+### 🔗 **AirRelatedField**
+The best of both worlds - works like `PrimaryKeyRelatedField` but returns full serialized data when needed. **One field, infinite possibilities.**
+
+### 🧠 **Intelligent Batch Preloading**
+Automatically batches and preloads related objects during validation. **Memory efficient, lightning fast.**
+
+### 🎯 **Action-Smart Configuration**
+Different field behavior for `list`, `create`, `update` actions automatically. **Context-aware serialization.**
+
+### 🎨 **Dynamic Field Control**
+Hide fields, make them read-only, or change behavior per action. **Ultimate flexibility.**
 
 ## 📦 Installation
 
@@ -341,18 +384,17 @@ Set up development environment:
 git clone git@github.com:bubaley/air-drf-relation.git
 cd air-drf-relation
 
-# Install in development mode
-pip install -e ".[dev]"
+# Create virtual environment with Python 3.13
+uv venv --python 3.13
 
-# Install pre-commit hooks
-pre-commit install
+# Install dependencies
+uv sync
 
-# Run linting and formatting
-ruff check .
-ruff format .
+# Run tests
+python manage.py test
 
-# Run security checks
-bandit -r air_drf_relation/
+# Run pre-commit checks
+pre-commit run --all-files
 ```
 
 ## 📋 Requirements
