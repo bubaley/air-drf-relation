@@ -1,4 +1,4 @@
-from typing import Any, Dict, List, Optional, Type, TypeVar, Union
+from typing import Any, Dict, List, Optional, TypeVar, Union
 
 from django.db.models import ForeignKey, Model
 from rest_framework import serializers
@@ -229,7 +229,6 @@ class AirModelSerializer(serializers.ModelSerializer, AirSerializer):
     def _filter_queryset_by_fields(self) -> None:
         """Filter querysets for related fields using custom functions."""
         related_fields = self._get_related_fields()
-
         for field_name, field in related_fields.items():
             if not self.initial_data.get(field_name):
                 continue
@@ -246,15 +245,20 @@ class AirModelSerializer(serializers.ModelSerializer, AirSerializer):
             if isinstance(field, (AirRelatedField, PrimaryKeyRelatedField))
         }
 
-    def _get_queryset_function_name(self, field: Union[AirRelatedField, PrimaryKeyRelatedField]) -> str:
+    def _get_queryset_function_name(self, field: Union[AirRelatedField, PrimaryKeyRelatedField]) -> Union[str, None]:
         """Get queryset function name for the field."""
+        field_name = field.field_name
+        if field_name in self.extra_kwargs:
+            if self.extra_kwargs[field_name].get('queryset_function_disabled'):
+                return None
+            if 'queryset_function_name' in self.extra_kwargs[field_name]:
+                return self.extra_kwargs[field_name]['queryset_function_name']
         if isinstance(field, AirRelatedField):
             if field.queryset_function_disabled:
-                return ''
+                return None
             if field.queryset_function_name:
                 return field.queryset_function_name
-
-        return f'queryset_{field.field_name}'
+        return f'queryset_{field_name}'
 
     def _has_queryset_function(self, function_name: str) -> bool:
         """Check if queryset function exists and is callable."""
@@ -386,48 +390,96 @@ class AirDynamicSerializer(AirEmptySerializer):
 
 class AirDataclassSerializer(DataclassSerializer):
     """
-    Enhanced DataclassSerializer with improved validation and representation.
+    Enhanced DataclassSerializer with improved field handling and validation.
+
+    Provides better support for partial updates and nested dataclass serialization.
     """
 
     def to_internal_value(self, data: Dict[str, Any]) -> T:
-        """Convert data to dataclass with empty field handling."""
+        """
+        Convert input data to dataclass instance with field preservation.
+
+        Args:
+            data: Input data dictionary
+
+        Returns:
+            Validated dataclass instance with preserved existing field values
+        """
         instance = super().to_internal_value(data)
-        self._handle_empty_fields(instance)
+        self._preserve_missing_field_values(instance, data)
         return instance
 
-    def _handle_empty_fields(self, instance: T) -> None:
-        """Handle empty fields by setting default values."""
+    def run_validation(self, data: Any = empty) -> T:
+        """
+        Run validation with proper instance handling for nested serializers.
+
+        Args:
+            data: Data to validate
+
+        Returns:
+            Validated dataclass instance
+        """
+        self._setup_nested_instance()
+        return super().run_validation(data)
+
+    def to_representation(self, instance: Any) -> Dict[str, Any]:
+        """
+        Convert dataclass instance to dictionary representation.
+
+        Args:
+            instance: Dataclass instance or dictionary to represent
+
+        Returns:
+            Dictionary representation with proper field handling
+        """
+        if instance is not None and isinstance(instance, dict):
+            self._ensure_writable_fields_in_dict(instance)
+
+        return super().to_representation(instance)
+
+    def _preserve_missing_field_values(self, instance: T, data: Dict[str, Any]) -> None:
+        """
+        Preserve values for fields not present in input data.
+
+        Args:
+            instance: Target dataclass instance
+            data: Input data dictionary
+        """
         dataclass = self.Meta.dataclass
+        value_keys = data.keys()
 
-        for field_name in instance.__dict__.keys():
-            if getattr(instance, field_name) == empty:
-                default_value = self._get_default_field_value(dataclass, field_name)
-                setattr(instance, field_name, default_value)
+        for key in instance.__dict__.keys():
+            if key not in value_keys or getattr(instance, key) == empty:
+                value = self._get_field_default_value(key, dataclass)
+                setattr(instance, key, value)
 
-    def _get_default_field_value(self, dataclass: Type[T], field_name: str) -> Any:
-        """Get default value for a field."""
+    def _get_field_default_value(self, field_name: str, dataclass: type) -> Any:
+        """
+        Get default value for a field from existing instance or dataclass.
+
+        Args:
+            field_name: Name of the field
+            dataclass: Dataclass type
+
+        Returns:
+            Default value for the field
+        """
         if self.instance:
             return getattr(self.instance, field_name, None)
         return getattr(dataclass, field_name, None)
 
-    def run_validation(self, data: Any = empty) -> T:
-        """Run validation with parent instance handling."""
-        if self._should_set_instance_from_parent():
+    def _setup_nested_instance(self) -> None:
+        """Setup instance for nested serializer from parent instance."""
+        if self.parent and getattr(self.parent, 'instance', None):
             self.instance = getattr(self.parent.instance, self.source, None)
-        return super().run_validation(data)
 
-    def _should_set_instance_from_parent(self) -> bool:
-        """Check if instance should be set from parent."""
-        return self.parent and getattr(self.parent, 'instance', None) and hasattr(self, 'source')
+    def _ensure_writable_fields_in_dict(self, instance: Dict[str, Any]) -> None:
+        """
+        Ensure all writable fields are present in dictionary representation.
 
-    def to_representation(self, instance: Union[Dict[str, Any], T, None]) -> Dict[str, Any]:
-        """Convert instance to representation with null field handling."""
-        if instance is not None and isinstance(instance, dict):
-            self._ensure_all_fields_in_dict(instance)
-        return super().to_representation(instance)
-
-    def _ensure_all_fields_in_dict(self, instance: Dict[str, Any]) -> None:
-        """Ensure all writable fields are present in dict instance."""
+        Args:
+            instance: Dictionary instance to update
+        """
         for field in self._writable_fields:
             if field.field_name not in instance:
                 instance[field.field_name] = None

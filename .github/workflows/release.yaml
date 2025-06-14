@@ -1,0 +1,128 @@
+name: Release
+
+on:
+  workflow_run:
+    workflows: ["CI"]
+    types: [completed]
+    branches: ["main"]
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  release:
+    name: Release
+    runs-on: ubuntu-latest
+    if: ${{ github.event.workflow_run.conclusion == 'success' && github.event.workflow_run.head_branch == 'master' }}
+    permissions:
+      contents: write
+    outputs:
+      skipped: ${{ steps.changelog.outputs.skipped }}
+      tag: ${{ steps.changelog.outputs.tag }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Conventional Changelog Action
+        id: changelog
+        uses: TriPSs/conventional-changelog-action@v6
+        with:
+          github-token: ${{ secrets.github_token }}
+          skip-commit: true
+          skip-tag: true
+          version-file: "pyproject.toml"
+          version-path: "project.version"
+          preset: "conventionalcommits"
+          release-count: 0
+          tag-prefix: "v"
+          output-file: "false"
+
+      - name: Update version in Python file
+        run: |
+          VERSION="${{ steps.changelog.outputs.version }}"
+          FILE="air_drf_relation/__init__.py"
+          sed -i "s/__version__ = \".*\"/__version__ = \"$VERSION\"/" $FILE
+
+      - name: Commit all changes together
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add pyproject.toml air_drf_relation/__init__.py
+          git commit -m "chore(release): v$VERSION"
+          git tag "v$VERSION"
+          git push
+          git push --tags
+
+      - name: Create Release
+        uses: softprops/action-gh-release@v2
+        if: ${{ steps.changelog.outputs.skipped == 'false' }}
+        with:
+          tag_name: ${{ steps.changelog.outputs.tag }}
+          name: ${{ steps.changelog.outputs.tag }}
+          body: ${{ steps.changelog.outputs.clean_changelog }}
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+  # build-and-push:
+  #   name: Build & Push Docker Image
+  #   runs-on: ubuntu-latest
+  #   needs: release
+  #   if: ${{ needs.release.outputs.skipped == 'false' }}
+  #   permissions:
+  #     contents: read
+  #   steps:
+  #     - name: Checkout repository
+  #       uses: actions/checkout@v4
+  #       with:
+  #         fetch-depth: 0
+
+  #     - name: Get version from release
+  #       id: version
+  #       run: |
+  #         RAW_VERSION=${{ needs.release.outputs.tag }}
+  #         VERSION="${RAW_VERSION#v}"
+  #         echo "version=${VERSION}" >> $GITHUB_OUTPUT
+  #         echo "Version: $VERSION"
+
+  #     - name: Login to Yandex Cloud Container Registry
+  #       uses: yc-actions/yc-cr-login@v3
+  #       with:
+  #         yc-sa-json-credentials: ${{ secrets.YC_KEY_JSON }}
+
+  #     - name: Extract metadata
+  #       id: meta
+  #       uses: docker/metadata-action@v5
+  #       with:
+  #         images: ${{ env.REGISTRY }}/${{ secrets.YC_REGISTRY }}/${{ env.IMAGE_NAME }}
+  #         tags: |
+  #           type=raw,value=${{ steps.version.outputs.version }},prefix=,suffix=
+  #           type=raw,value=latest
+
+  #     - name: Set up Docker Buildx
+  #       uses: docker/setup-buildx-action@v3
+  #       with:
+  #         platforms: linux/amd64,linux/arm64
+
+  #     - name: Build and push Docker image
+  #       uses: docker/build-push-action@v6
+  #       with:
+  #         context: .
+  #         file: ./Dockerfile
+  #         platforms: linux/amd64,linux/arm64
+  #         push: true
+  #         tags: ${{ steps.meta.outputs.tags }}
+  #         cache-from: type=gha,scope=${{ github.ref }}-${{ github.workflow }}
+  #         cache-to: type=gha,mode=max,scope=${{ github.ref }}-${{ github.workflow }}
+  #         build-args: |
+  #           BUILDKIT_INLINE_CACHE=1
+
+  #     - name: Docker info
+  #       run: |
+  #         docker version
+  #         docker info
+  #         docker buildx inspect --bootstrap
+
+  #     - name: Image push confirmation
+  #       run: |
+  #         echo "Successfully pushed images:"
+  #         echo "${{ steps.meta.outputs.tags }}" | tr ',' '\n' | sed 's/^/- /'

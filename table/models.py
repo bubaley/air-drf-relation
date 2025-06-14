@@ -1,3 +1,5 @@
+from uuid import uuid4
+
 from django.db import models
 
 
@@ -15,6 +17,7 @@ class Material(models.Model):
 
 
 class Leg(models.Model):
+    id = models.UUIDField(primary_key=True, default=uuid4, editable=False)
     name = models.CharField(max_length=256)
     color = models.ForeignKey('Color', on_delete=models.CASCADE, related_name='legs')
     material = models.ForeignKey('Material', on_delete=models.CASCADE, related_name='legs')

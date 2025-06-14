@@ -20,7 +20,7 @@ class ValidatePreload(TestCase):
         self._legs_count = 50
         self._table_count = 1000
         Company.objects.bulk_create([Company(name=v) for v in range(self._companies_count)])
-        Leg.objects.bulk_create(
+        self.legs = Leg.objects.bulk_create(
             [
                 Leg(name=v, color_id=get_id(self._colors_count), material_id=get_id(self._materials_count))
                 for v in range(self._legs_count)
@@ -42,7 +42,7 @@ class ValidatePreload(TestCase):
                 'name': v,
                 'material': {'company': get_id(self._companies_count)},
                 'color': get_id(self._colors_count),
-                'legs': [get_id(self._legs_count) for _ in range(5)],
+                'legs': self._prepare_leg_ids(),
             }
             for v in range(self._table_count)
         ]
@@ -55,7 +55,7 @@ class ValidatePreload(TestCase):
                 'name': v,
                 'material': {'company': get_id(self._companies_count)},
                 'color': get_id(self._colors_count),
-                'legs': [get_id(self._legs_count) for _ in range(5)],
+                'legs': self._prepare_leg_ids(),
             }
             for v in range(self._table_count)
         ]
@@ -125,23 +125,29 @@ class ValidatePreload(TestCase):
     def test_custom_serializer_preload_objects(self):
         data = [
             {
-                'leg': get_id(self._legs_count),
+                'leg': self._prepare_leg_ids(1)[0],
                 'material': get_id(self._materials_count),
-                'legs': [get_id(self._legs_count), 3],
+                'legs': self._prepare_leg_ids(3),
                 'tables': [
                     {
                         'material': get_id(self._materials_count),
                         'color': get_id(self._colors_count),
-                        'legs': [get_id(self._legs_count) for _ in range(10)],
+                        'legs': self._prepare_leg_ids(10, as_strings=True),
                     }
                     for _ in range(5)
                 ],
             }
             for _ in range(300)
         ]
+
         serializer = CustomSerializer(data=data, many=True)
+        # print(data)
         serializer.is_valid(raise_exception=True)
         self.assertEqual(len(connection.queries), 3)
+
+    def _prepare_leg_ids(self, count=5, as_strings=False):
+        ids = [self.legs[randint(0, self._legs_count - 1)].pk for _ in range(count)]
+        return [str(v) for v in ids] if as_strings else ids
 
 
 def get_id(count):

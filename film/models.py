@@ -2,16 +2,15 @@ from dataclasses import dataclass
 
 from django.db import models
 
-from air_drf_relation.fields import AirDataclassField
+from air_drf_relation.model_fields import AirDataclassField
 
 
 @dataclass
 class FilmInformation:
-    budget: float
     rating: str
     description: str
+    budget: float = 0
     active: bool = True
-    # kek: int = 1
 
 
 class Actor(models.Model):

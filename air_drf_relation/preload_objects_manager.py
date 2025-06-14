@@ -77,28 +77,16 @@ class PreloadObjectsManager:
             data_item: Single data item to extract values from
         """
         for field in serializer._writable_fields:
-            field_type = type(field)
+            self._process_field(field, data_item)
 
-            if self._is_pk_related_field(field_type):
-                self._handle_pk_related_field(field, data_item)
-            elif self._is_many_related_field(field_type):
-                self._handle_many_related_field(field, data_item)
-            elif self._is_nested_serializer(field_type):
-                self._handle_nested_serializer(field, data_item)
-
-    def _is_pk_related_field(self, field_type: Type) -> bool:
-        """Check if field is a PrimaryKeyRelatedField."""
-        return issubclass(field_type, serializers.PrimaryKeyRelatedField)
-
-    def _is_many_related_field(self, field_type: Type) -> bool:
-        """Check if field is a ManyRelatedField."""
-        return issubclass(field_type, serializers.ManyRelatedField)
-
-    def _is_nested_serializer(self, field_type: Type) -> bool:
-        """Check if field is a nested serializer."""
-        return issubclass(field_type, serializers.Serializer) or (
-            issubclass(field_type, serializers.ListSerializer) and hasattr(field_type, 'child')
-        )
+    def _process_field(self, field: serializers.Field, data_item: Any) -> None:
+        """Process a single field based on its type."""
+        if isinstance(field, serializers.PrimaryKeyRelatedField):
+            self._handle_pk_related_field(field, data_item)
+        elif isinstance(field, serializers.ManyRelatedField):
+            self._handle_many_related_field(field, data_item)
+        elif isinstance(field, (serializers.Serializer, serializers.ListSerializer)):
+            self._handle_nested_serializer(field, data_item)
 
     def _handle_pk_related_field(self, field: serializers.PrimaryKeyRelatedField, data_item: Any) -> None:
         """Handle PrimaryKeyRelatedField by collecting its value."""
@@ -137,6 +125,28 @@ class PreloadObjectsManager:
 
             self.preloaded_objects[query_hash] = list(queryset.filter(pk__in=list(set(pks)))) if pks else []
 
+            # Create indexed lookup for UUID performance optimization
+            self._create_indexed_lookup(query_hash)
+
+    def _create_indexed_lookup(self, query_hash: str) -> None:
+        """Create indexed lookup for faster object retrieval."""
+        objects = self.preloaded_objects[query_hash]
+        if not objects:
+            return
+
+        # Create a dictionary index for faster lookup
+        index_key = f'{query_hash}_index'
+        index = {}
+
+        for obj in objects:
+            obj_pk = getattr(obj, 'pk')
+            # Store both original and normalized versions for compatibility
+            index[obj_pk] = obj
+            if self._is_uuid_like(obj_pk):
+                index[str(obj_pk)] = obj
+
+        self.preloaded_objects[index_key] = index
+
     def _append_object_pks(self, queryset: QuerySet, value: Any) -> None:
         """
         Append object PKs to the preload collection.
@@ -154,10 +164,16 @@ class PreloadObjectsManager:
         values_list = value if isinstance(value, list) else [value]
         validated_pks = self._get_validated_pks(queryset.model, values_list)
 
-        current_pks = set(self._objects_for_preload[query_hash]['pks'])
-        new_pks = [pk for pk in validated_pks if pk not in current_pks]
+        # Use set operations for efficiency
+        preload_entry = self._objects_for_preload[query_hash]
+        if not hasattr(preload_entry, '_pks_set'):
+            preload_entry['_pks_set'] = {self._normalize_pk_for_comparison(pk) for pk in preload_entry['pks']}
 
-        self._objects_for_preload[query_hash]['pks'].extend(new_pks)
+        for pk in validated_pks:
+            pk_key = self._normalize_pk_for_comparison(pk)
+            if pk_key not in preload_entry['_pks_set']:
+                preload_entry['_pks_set'].add(pk_key)
+                preload_entry['pks'].append(pk)
 
     def _ensure_preload_entry_exists(self, query_hash: str, queryset: QuerySet) -> None:
         """Ensure preload entry exists for the given query hash."""
@@ -178,13 +194,23 @@ class PreloadObjectsManager:
         """
         result = []
         pk_field = model._meta.pk
+        seen_pks = set()
 
         for value in values:
             try:
-                if isinstance(value, dict):
-                    value = value.get(pk_field.name)
-                if value is not None:
-                    result.append(pk_field.get_prep_value(value))
+                # Extract PK value from dict if needed
+                extracted_value = value.get(pk_field.name) if isinstance(value, dict) else value
+                if extracted_value is None:
+                    continue
+
+                validated_pk = pk_field.get_prep_value(extracted_value)
+
+                # Use normalized key for deduplication
+                pk_key = PreloadObjectsManager._normalize_pk_for_comparison(validated_pk)
+
+                if pk_key not in seen_pks:
+                    seen_pks.add(pk_key)
+                    result.append(validated_pk)
             except (ValueError, TypeError):
                 # Skip invalid PKs
                 continue
@@ -254,9 +280,17 @@ class PreloadObjectsManager:
                 if query_hash not in manager.preloaded_objects:
                     manager.preloaded_objects[query_hash] = []
 
+                # Normalize the data for UUID fields before searching
+                search_data = data
+                if hasattr(self.queryset.model._meta.pk, 'get_prep_value'):
+                    try:
+                        search_data = self.queryset.model._meta.pk.get_prep_value(data)
+                    except (ValueError, TypeError):
+                        search_data = data
+
                 # Try to find object in preloaded objects
                 preloaded_obj = PreloadObjectsManager._find_preloaded_object(
-                    manager.preloaded_objects[query_hash], data
+                    manager.preloaded_objects[query_hash], search_data, manager, query_hash
                 )
                 if preloaded_obj:
                     return preloaded_obj
@@ -278,12 +312,38 @@ class PreloadObjectsManager:
         PrimaryKeyRelatedField.to_internal_value = enhanced_to_internal_value
 
     @staticmethod
-    def _find_preloaded_object(objects: Union[List[Model], QuerySet], pk_value: Any) -> Optional[Model]:
+    def _find_preloaded_object(
+        objects: Union[List[Model], QuerySet],
+        pk_value: Any,
+        manager: Optional['PreloadObjectsManager'] = None,
+        query_hash: Optional[str] = None,
+    ) -> Optional[Model]:
         """Find object with matching PK in preloaded objects."""
+        # Use indexed lookup if available
+        if manager and query_hash:
+            index_key = f'{query_hash}_index'
+            if index_key in manager.preloaded_objects:
+                index = manager.preloaded_objects[index_key]
+                # Try direct lookup first, then normalized lookup
+                return index.get(pk_value) or index.get(str(pk_value))
+
+        # Fallback to linear search with optimized UUID comparison
         for obj in objects:
-            if getattr(obj, 'pk') == pk_value:
+            if PreloadObjectsManager._pk_values_match(getattr(obj, 'pk'), pk_value):
                 return obj
         return None
+
+    @staticmethod
+    def _pk_values_match(obj_pk: Any, search_pk: Any) -> bool:
+        """Check if two PK values match, handling UUID normalization."""
+        if obj_pk == search_pk:
+            return True
+
+        # For UUID-like objects, compare string representations
+        if PreloadObjectsManager._is_uuid_like(obj_pk) or PreloadObjectsManager._is_uuid_like(search_pk):
+            return str(obj_pk) == str(search_pk)
+
+        return False
 
     @staticmethod
     def _cache_loaded_object(manager: 'PreloadObjectsManager', query_hash: str, obj: Model) -> None:
@@ -297,6 +357,15 @@ class PreloadObjectsManager:
 
         preloaded_objects.append(obj)
 
+        # Update the index if it exists
+        index_key = f'{query_hash}_index'
+        if index_key in manager.preloaded_objects:
+            index = manager.preloaded_objects[index_key]
+            obj_pk = getattr(obj, 'pk')
+            index[obj_pk] = obj
+            if PreloadObjectsManager._is_uuid_like(obj_pk):
+                index[str(obj_pk)] = obj
+
     @staticmethod
     def disable_search_for_preloaded_objects() -> None:
         """
@@ -306,3 +375,13 @@ class PreloadObjectsManager:
         if hasattr(PrimaryKeyRelatedField, '_default_to_internal_value'):
             PrimaryKeyRelatedField.to_internal_value = PrimaryKeyRelatedField._default_to_internal_value
             delattr(PrimaryKeyRelatedField, '_default_to_internal_value')
+
+    @staticmethod
+    def _normalize_pk_for_comparison(pk_value: Any) -> str:
+        """Normalize PK value for consistent comparison (especially for UUIDs)."""
+        return str(pk_value) if hasattr(pk_value, 'hex') or pk_value is not None else pk_value
+
+    @staticmethod
+    def _is_uuid_like(value: Any) -> bool:
+        """Check if value is UUID-like (has hex attribute)."""
+        return hasattr(value, 'hex')

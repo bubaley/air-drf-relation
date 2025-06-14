@@ -21,12 +21,12 @@ def queries_count(func: F) -> F:
     @wraps(func)
     def wrapper(*args, **kwargs):
         init_count = len(db.connection.queries)
-        start_time = datetime.utcnow()
+        start_time = datetime.now()
 
         try:
             result = func(*args, **kwargs)
 
-            end_time = datetime.utcnow()
+            end_time = datetime.now()
             end_count = len(db.connection.queries)
 
             queries_executed = end_count - init_count
@@ -45,7 +45,7 @@ def queries_count(func: F) -> F:
             return result
 
         except Exception as e:
-            end_time = datetime.utcnow()
+            end_time = datetime.now()
             end_count = len(db.connection.queries)
             queries_executed = end_count - init_count
             duration = (end_time - start_time).total_seconds()
@@ -56,6 +56,6 @@ def queries_count(func: F) -> F:
                 f'Duration before error: {duration:.3f}s | '
                 f'Error: {str(e)}'
             )
-            raise
+            raise e
 
     return wrapper

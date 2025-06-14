@@ -27,7 +27,7 @@ class Migration(migrations.Migration):
                 ('release_date', models.DateField()),
                 (
                     'information',
-                    air_drf_relation.fields.AirDataclassField(data_class=film.models.FilmInformation),
+                    air_drf_relation.model_fields.AirDataclassField(data_class=film.models.FilmInformation),
                 ),
                 ('actors', models.ManyToManyField(related_name='films', to='film.Actor')),
             ],
