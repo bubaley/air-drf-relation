@@ -338,7 +338,7 @@ Set up development environment:
 
 ```bash
 # Clone repository
-git clone https://github.com/bubaley/air-drf-relation.git
+git clone git@github.com:bubaley/air-drf-relation.git
 cd air-drf-relation
 
 # Install in development mode
