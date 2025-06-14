@@ -1,6 +1,7 @@
-from air_drf_relation.serializers import AirModelSerializer, AirDataclassSerializer
 from air_drf_relation.fields import AirRelatedField
-from .models import Film, Actor, FilmInformation
+from air_drf_relation.serializers import AirDataclassSerializer, AirModelSerializer
+
+from .models import Actor, Film, FilmInformation
 
 
 class ActorSerializer(AirModelSerializer):
@@ -24,4 +25,4 @@ class FilmSerializer(AirModelSerializer):
 
     def update_or_create(self, instance, validated_data):
         validated_data.pop('actors', None)
-        return super(FilmSerializer, self).update_or_create(instance, validated_data)
+        return super().update_or_create(instance, validated_data)

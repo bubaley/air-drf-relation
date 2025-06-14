@@ -1,7 +1,7 @@
 from django_filters import rest_framework as filters
 
 from air_drf_relation.filters import AirModelMultipleChoiceField
-from book.models import Book, Author
+from book.models import Author, Book
 
 
 class AuthorFilter(filters.FilterSet):

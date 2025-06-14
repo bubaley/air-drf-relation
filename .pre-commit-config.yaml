@@ -1,0 +1,42 @@
+exclude: .*migrations\/.*
+default_language_version:
+  python: python3.9
+
+repos:
+  - repo: https://github.com/pre-commit/pre-commit-hooks
+    rev: v5.0.0
+    hooks:
+      - id: check-yaml
+      - id: end-of-file-fixer
+      - id: trailing-whitespace
+      - id: check-merge-conflict
+      - id: check-added-large-files
+
+  - repo: https://github.com/asottile/pyupgrade
+    rev: v3.20.0
+    hooks:
+      - id: pyupgrade
+
+  - repo: https://github.com/astral-sh/ruff-pre-commit
+    rev: v0.11.13
+    hooks:
+      - id: ruff
+      - id: ruff-format
+
+  - repo: https://github.com/pycqa/bandit
+    rev: 1.8.3
+    hooks:
+      - id: bandit
+        args: ["--config", "pyproject.toml"]
+
+  - repo: https://github.com/astral-sh/uv-pre-commit
+    rev: 0.7.11
+    hooks:
+      - id: uv-lock
+        args: ["--locked"]
+
+  - repo: https://github.com/tox-dev/pyproject-fmt
+    rev: v2.6.0
+    hooks:
+      - id: pyproject-fmt
+        args: ["--keep-full-version", "--indent", "4"]

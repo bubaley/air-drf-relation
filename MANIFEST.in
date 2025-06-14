@@ -1,3 +1,30 @@
-recursive-exclude core *
-recursive-exclude book *
-recursive-include air_drf_relation *
+include LICENSE
+include README.md
+include pyproject.toml
+
+recursive-include air_drf_relation *.py
+recursive-include air_drf_relation *.json
+recursive-include air_drf_relation *.txt
+
+global-exclude *.py[cod]
+global-exclude __pycache__
+global-exclude *.so
+global-exclude .git
+global-exclude .gitignore
+global-exclude .env*
+global-exclude .venv
+global-exclude .vscode
+global-exclude .ruff_cache
+global-exclude *.egg-info
+global-exclude build
+global-exclude dist
+global-exclude uv.lock
+global-exclude requirements.txt
+global-exclude manage.py
+global-exclude film
+global-exclude table
+global-exclude task
+global-exclude book
+global-exclude device
+global-exclude core
+global-exclude media

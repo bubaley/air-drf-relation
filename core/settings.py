@@ -10,7 +10,6 @@ For the full list of settings and their values, see
 https://docs.djangoproject.com/en/3.2/ref/settings/
 """
 
-from pathlib import Path
 import environ
 
 env = environ.Env()
@@ -23,7 +22,8 @@ BASE_DIR = root()
 # See https://docs.djangoproject.com/en/3.2/howto/deployment/checklist/
 
 # SECURITY WARNING: keep the secret key used in production secret!
-SECRET_KEY = 'django-insecure-!s9)v*$ef)d%nsel!uk(tx&97=04&ywzdpm*h%i)5x_8gg=onf'
+SECRET_KEY = env.str('SECRET_KEY', 'secret')
+
 
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = True
@@ -45,7 +45,7 @@ INSTALLED_APPS = [
     'task',
     'table',
     'film',
-    'air_drf_relation'
+    'air_drf_relation.apps.AirDrfRelationConfig',
 ]
 
 MIDDLEWARE = [
@@ -63,9 +63,7 @@ ROOT_URLCONF = 'core.urls'
 TEMPLATES = [
     {
         'BACKEND': 'django.template.backends.django.DjangoTemplates',
-        'DIRS': [
-            root('templates')
-        ],
+        'DIRS': [root('templates')],
         'APP_DIRS': True,
         'OPTIONS': {
             'context_processors': [
@@ -83,9 +81,7 @@ WSGI_APPLICATION = 'core.wsgi.application'
 # Database
 # https://docs.djangoproject.com/en/3.2/ref/settings/#databases
 
-DATABASES = {
-    'default': env.db_url('DATABASE_URL', 'sqlite:///' + root('db.sqlite3'))
-}
+DATABASES = {'default': env.db_url('DATABASE_URL', 'sqlite:///' + root('db.sqlite3'))}
 
 # Password validation
 # https://docs.djangoproject.com/en/3.2/ref/settings/#auth-password-validators
@@ -135,11 +131,9 @@ DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 AIR_DRF_RELATION = {
     'HTTP_HOST': env.str('HTTP_HOST', '127.0.0.1:8000'),
     'USE_SSL': env.bool('USE_SSL', False),
-    'USE_PRELOAD': True
+    'USE_PRELOAD': True,
 }
 
 REST_FRAMEWORK = {
-    'DEFAULT_FILTER_BACKENDS': (
-        'django_filters.rest_framework.DjangoFilterBackend',
-    ),
+    'DEFAULT_FILTER_BACKENDS': ('django_filters.rest_framework.DjangoFilterBackend',),
 }

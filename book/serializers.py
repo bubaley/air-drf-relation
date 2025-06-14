@@ -1,6 +1,7 @@
-from air_drf_relation.serializers import AirModelSerializer
 from air_drf_relation.fields import AirRelatedField
-from .models import Author, Book, City, Magazine, Genre, Bookmark
+from air_drf_relation.serializers import AirModelSerializer
+
+from .models import Author, Book, Bookmark, City, Genre, Magazine
 
 
 class AuthorSerializer(AirModelSerializer):
@@ -53,9 +54,7 @@ class BookHiddenSerializer(AirModelSerializer):
     class Meta:
         model = Book
         fields = ('uuid', 'name', 'author', 'city')
-        extra_kwargs = {
-            'name': {'hidden': True}
-        }
+        extra_kwargs = {'name': {'hidden': True}}
 
 
 class BookActionKwargsSerializer(AirModelSerializer):
@@ -108,10 +107,7 @@ class CityWritablePkSerializer(AirModelSerializer):
         model = City
         fields = ('uuid', 'name')
         read_only_fields = ('uuid',)
-        action_extra_kwargs = {
-            'create,second_action': {'uuid': {'read_only': False}},
-            '_': {'name': {'hidden': True}}
-        }
+        action_extra_kwargs = {'create,second_action': {'uuid': {'read_only': False}}, '_': {'name': {'hidden': True}}}
 
 
 class GenreSerializer(AirModelSerializer):

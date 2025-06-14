@@ -1,17 +1,15 @@
 from django.test import TestCase
 
-from device.serializers import DeviceWithoutActionsSerializer, DeviceWithReadOnlyActionsSerializer, \
-    DeviceWithHiddenActionsSerializer
+from device.serializers import (
+    DeviceWithHiddenActionsSerializer,
+    DeviceWithoutActionsSerializer,
+    DeviceWithReadOnlyActionsSerializer,
+)
 
 
 class DeviceTest(TestCase):
     def setUp(self) -> None:
-        self.data = {
-            'name': 'name',
-            'code': 1,
-            'text': 'text',
-            'model': 'model'
-        }
+        self.data = {'name': 'name', 'code': 1, 'text': 'text', 'model': 'model'}
 
     def test_creation_without_actions(self):
         serializer = DeviceWithoutActionsSerializer(data=self.data)
@@ -57,8 +55,9 @@ class DeviceTest(TestCase):
             'name': {'hidden': False},
             'code': {'hidden': False},
         }
-        serializer = DeviceWithHiddenActionsSerializer(data=self.data, action='custom_action',
-                                                       extra_kwargs=extra_kwargs)
+        serializer = DeviceWithHiddenActionsSerializer(
+            data=self.data, action='custom_action', extra_kwargs=extra_kwargs
+        )
         serializer.is_valid(raise_exception=True)
         serializer.save()
         data = serializer.data

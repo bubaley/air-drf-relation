@@ -1,8 +1,9 @@
-from rest_framework.relations import PrimaryKeyRelatedField, ManyRelatedField
+from rest_framework.relations import ManyRelatedField, PrimaryKeyRelatedField
 
-from air_drf_relation.serializers import AirModelSerializer, AirEmptySerializer
 from air_drf_relation.fields import AirRelatedField
-from .models import Table, Material, Leg
+from air_drf_relation.serializers import AirEmptySerializer, AirModelSerializer
+
+from .models import Leg, Material, Table
 
 
 class MaterialSerializer(AirModelSerializer):

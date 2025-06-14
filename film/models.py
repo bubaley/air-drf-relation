@@ -1,6 +1,8 @@
-from django.db import models
 from dataclasses import dataclass
-from air_drf_relation.model_fields import AirDataclassField
+
+from django.db import models
+
+from air_drf_relation.fields import AirDataclassField
 
 
 @dataclass

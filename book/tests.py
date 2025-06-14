@@ -1,22 +1,32 @@
 from uuid import uuid4
+
 from django.conf import settings
+from django.contrib.auth.models import User
+from django.db import connection, reset_queries
+from django.test import TestCase
+from rest_framework import serializers
 
 from air_drf_relation.decorators import queries_count
 from air_drf_relation.queryset_optimization import get_relations
 from air_drf_relation.serializers import AirDynamicSerializer
-from rest_framework import serializers
 
 from .filters import AuthorFilter
-from django.db import connection, reset_queries
-
-from django.contrib.auth.models import User
-from django.test import TestCase
-from rest_framework.utils.serializer_helpers import ReturnDict
-from .models import Author, Book, City, Genre, Magazine, Bookmark
-from .serializers import BookSerializer, DefaultBookSerializer, MagazineSerializer, MagazineSpecialSerializer, \
-    BookReadOnlySerializer, BookHiddenSerializer, BookActionKwargsSerializer, CityWritablePkSerializer, \
-    BookWithGenreSerializer, DefaultMagazineSerializer, BookWithGenreListSerializer, BookmarkSerializer, \
-    DisableOptimizationBookSerializer
+from .models import Author, Book, Bookmark, City, Genre, Magazine
+from .serializers import (
+    BookActionKwargsSerializer,
+    BookHiddenSerializer,
+    BookmarkSerializer,
+    BookReadOnlySerializer,
+    BookSerializer,
+    BookWithGenreListSerializer,
+    BookWithGenreSerializer,
+    CityWritablePkSerializer,
+    DefaultBookSerializer,
+    DefaultMagazineSerializer,
+    DisableOptimizationBookSerializer,
+    MagazineSerializer,
+    MagazineSpecialSerializer,
+)
 
 settings.DEBUG = True
 
@@ -49,8 +59,8 @@ class TestBookObjects(TestCase):
 
     def test_default_serialization(self):
         data = BookSerializer(self.book).data
-        self.assertEqual(type(data['author']), ReturnDict)
-        self.assertEqual(type(data['city']), ReturnDict)
+        self.assertIsInstance(data['author'], dict)
+        self.assertIsInstance(data['city'], dict)
 
     def test_pk_serialization(self):
         extra_kwargs = {'author': {'pk_only': True}, 'city': {'pk_only': True}}
@@ -107,9 +117,7 @@ class TestBookObjects(TestCase):
 
     def test_hidden_creation(self):
         data = {'name': 'hidden'}
-        serializer = BookHiddenSerializer(data=data, extra_kwargs={
-            'city': {'hidden': True}
-        })
+        serializer = BookHiddenSerializer(data=data, extra_kwargs={'city': {'hidden': True}})
         serializer.is_valid(raise_exception=True)
         instance = serializer.save()
         self.assertEqual(instance.author, None)
@@ -151,16 +159,12 @@ class TestBookObjects(TestCase):
         self.assertEqual(len(serializer.errors), 0)
 
     def test_create_from_dict(self):
-        data = {'name': 'create from dict', 'author': {
-            'id': self.author.pk
-        }, 'city': {
-            'uuid': str(self.city.uuid)
-        }}
+        data = {'name': 'create from dict', 'author': {'id': self.author.pk}, 'city': {'uuid': str(self.city.uuid)}}
         serializer = BookSerializer(data=data)
         serializer.is_valid(raise_exception=True)
         instance = serializer.save()
-        self.assertEqual(type(serializer.data['author']), ReturnDict)
-        self.assertEqual(type(serializer.data['city']), ReturnDict)
+        self.assertIsInstance(serializer.data['author'], dict)
+        self.assertIsInstance(serializer.data['city'], dict)
         self.assertEqual(instance.author, self.author)
         self.assertEqual(instance.city, self.city)
 
@@ -168,9 +172,7 @@ class TestBookObjects(TestCase):
         Genre.objects.create(name='1', id=1)
         Genre.objects.create(name='2', id=2)
 
-        data = {'name': 'many to many', 'genres': [1, {
-            'id': 2
-        }]}
+        data = {'name': 'many to many', 'genres': [1, {'id': 2}]}
         serializer = BookWithGenreSerializer(data=data)
         serializer.is_valid(raise_exception=True)
         instance = serializer.save()
@@ -246,15 +248,21 @@ class TestMagazineObjects(TestCase):
         self.assertEqual(serializer.data.get('name', False), False)
 
     def test_uuid_serialization(self):
-        data = {'name': 'default', 'author': self.author.pk, 'city': str(self.city.pk), 'available_cities': [
-            str(self.city.pk), str(self.city2.pk),
-        ]}
+        data = {
+            'name': 'default',
+            'author': self.author.pk,
+            'city': str(self.city.pk),
+            'available_cities': [
+                str(self.city.pk),
+                str(self.city2.pk),
+            ],
+        }
         extra_kwargs = {'city': {'pk_only': True}, 'author': {'pk_only': True}}
         serializer = DefaultMagazineSerializer(data=data, extra_kwargs=extra_kwargs)
         serializer.is_valid(raise_exception=True)
         serializer.save()
         self.assertEqual(type(serializer.data['city']), str)
-        self.assertTrue(all([type(v) == str for v in serializer.data['available_cities']]))
+        self.assertTrue(all(isinstance(v, str) for v in serializer.data['available_cities']))
 
 
 class TestOptimizeQuerySet(TestCase):
@@ -327,19 +335,17 @@ class TestOptimizeQuerySet(TestCase):
 class TestDynamicSerializer(TestCase):
     def test_success_data(self):
         data = {'name': 'Mark', 'age': 13}
-        serializer = AirDynamicSerializer(data=data, values={
-            'name': serializers.CharField(),
-            'age': serializers.IntegerField()
-        })
+        serializer = AirDynamicSerializer(
+            data=data, values={'name': serializers.CharField(), 'age': serializers.IntegerField()}
+        )
         serializer.is_valid()
         self.assertEqual(len(serializer.errors), 0)
 
     def test_error_data(self):
         data = {'name': 'Mark', 'age': 'age'}
-        serializer = AirDynamicSerializer(data=data, values={
-            'name': serializers.CharField(),
-            'age': serializers.FloatField()
-        })
+        serializer = AirDynamicSerializer(
+            data=data, values={'name': serializers.CharField(), 'age': serializers.FloatField()}
+        )
         serializer.is_valid()
         self.assertEqual(len(serializer.errors), 1)
 

@@ -1,6 +1,7 @@
 from air_drf_relation.fields import AirRelatedField
 from air_drf_relation.serializers import AirModelSerializer
-from .models import Task, Tag
+
+from .models import Tag, Task
 
 
 class TagSerializer(AirModelSerializer):

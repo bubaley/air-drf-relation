@@ -1,9 +1,10 @@
-from typing import TypeVar, Dict, Any
+from typing import Any, Dict, List, Optional, Type, TypeVar, Union
+
+from django.db.models import ForeignKey, Model
+from rest_framework import serializers
 from rest_framework.fields import empty
 from rest_framework.relations import PrimaryKeyRelatedField
 from rest_framework.utils import model_meta
-from rest_framework import serializers
-from django.db.models import ForeignKey
 from rest_framework_dataclasses.serializers import DataclassSerializer
 from rest_framework_dataclasses.types import Dataclass
 
@@ -18,47 +19,86 @@ T = TypeVar('T', bound=Dataclass)
 
 
 class AirSerializer(serializers.Serializer):
-    def __init__(self, *args, **kwargs):
-        self._preload_objects_manager = None
-        self.preload_objects = kwargs.pop('preload_objects', None)
+    """
+    Base serializer with preloading support and UUID stringification.
+    """
+
+    def __init__(self, *args: Any, **kwargs: Any):
+        self._preload_objects_manager: Optional[PreloadObjectsManager] = None
+        self.preload_objects: Optional[bool] = kwargs.pop('preload_objects', None)
         super().__init__(*args, **kwargs)
 
-    def update(self, instance, validated_data):
+    def update(self, instance: Any, validated_data: Dict[str, Any]) -> Any:
+        """Update method must be implemented in subclasses."""
         raise NotImplementedError('`update()` must be implemented.')
 
-    def create(self, validated_data):
+    def create(self, validated_data: Dict[str, Any]) -> Any:
+        """Create method must be implemented in subclasses."""
         raise NotImplementedError('`create()` must be implemented.')
 
-    def is_valid(self, raise_exception=False):
+    def is_valid(self, raise_exception: bool = False) -> bool:
+        """
+        Validate data and initialize preload manager if needed.
+
+        Args:
+            raise_exception: Whether to raise exception on validation error
+
+        Returns:
+            True if data is valid
+        """
         if self.preload_objects is not False:
             self._preload_objects_manager = PreloadObjectsManager.get_preload_objects_manager(self).init()
-        return super(AirSerializer, self).is_valid(raise_exception=raise_exception)
+        return super().is_valid(raise_exception=raise_exception)
 
-    def to_representation(self, instance):
+    def to_representation(self, instance: Any) -> Dict[str, Any]:
+        """Convert instance to representation with UUID stringification."""
         data = super().to_representation(instance)
         return stringify_uuids(data)
 
     @classmethod
-    def many_init(cls, *args, **kwargs):
-        class Meta:
-            pass
+    def many_init(cls, *args: Any, **kwargs: Any) -> 'AirListSerializer':
+        """Initialize list serializer with optimization."""
+        cls._ensure_meta_with_list_serializer()
+        serializer = super().many_init(*args, **kwargs)
 
+        if cls._should_optimize_queryset(serializer):
+            serializer.instance = optimize_queryset(serializer.instance, serializer.child)
+
+        return serializer
+
+    @classmethod
+    def _ensure_meta_with_list_serializer(cls) -> None:
+        """Ensure Meta class exists with list_serializer_class."""
         meta = getattr(cls, 'Meta', None)
         if not meta:
+
+            class Meta:
+                pass
+
             meta = Meta()
             setattr(cls, 'Meta', meta)
+
         if not hasattr(meta, 'list_serializer_class'):
             setattr(meta, 'list_serializer_class', AirListSerializer)
-        serializer = super(AirSerializer, cls).many_init(*args, **kwargs)
 
-        if hasattr(serializer, 'parent') and serializer.parent is None:
-            if serializer.child and \
-                    hasattr(serializer.child, 'optimize_queryset') and serializer.child.optimize_queryset:
-                serializer.instance = optimize_queryset(serializer.instance, serializer.child)
-        return serializer
+    @staticmethod
+    def _should_optimize_queryset(serializer: 'AirListSerializer') -> bool:
+        """Check if queryset should be optimized."""
+        return (
+            hasattr(serializer, 'parent')
+            and serializer.parent is None
+            and serializer.child
+            and hasattr(serializer.child, 'optimize_queryset')
+            and serializer.child.optimize_queryset
+        )
 
 
 class AirModelSerializer(serializers.ModelSerializer, AirSerializer):
+    """
+    Enhanced ModelSerializer with action-based configuration, queryset optimization,
+    and advanced field management.
+    """
+
     class Meta:
         model = None
         fields = ()
@@ -67,199 +107,327 @@ class AirModelSerializer(serializers.ModelSerializer, AirSerializer):
         extra_kwargs = {}
         optimize_queryset = True
 
-    def __init__(self, *args, **kwargs):
-        self.action = kwargs.pop('action', None)
-        self.user = kwargs.pop('user', None)
-        self.optimize_queryset = True
+    def __init__(self, *args: Any, **kwargs: Any):
+        # Extract custom parameters
+        self.action: Optional[str] = kwargs.pop('action', None)
+        self.user: Optional[Any] = kwargs.pop('user', None)
+        self.optimize_queryset: bool = self._get_optimize_queryset_setting(kwargs)
+        self._initial_extra_kwargs: Dict[str, Any] = kwargs.pop('extra_kwargs', {})
+
+        # Setup context and user/action if not provided
+        self._setup_context(kwargs)
+        self._setup_action_and_user(kwargs)
+
+        # Configure extra_kwargs before parent initialization
+        self.extra_kwargs = self._get_extra_kwargs()
+        self._update_extra_kwargs_in_fields()
+
+        super().__init__(*args, **kwargs)
+        self._update_fields()
+
+    def _get_optimize_queryset_setting(self, kwargs: Dict[str, Any]) -> bool:
+        """Get optimize_queryset setting from kwargs or Meta."""
         if 'optimize_queryset' in kwargs:
-            self.optimize_queryset = kwargs.pop('optimize_queryset', True)
-        elif hasattr(self.Meta, 'optimize_queryset'):
-            self.optimize_queryset = getattr(self.Meta, 'optimize_queryset', True)
-        self._initial_extra_kwargs = kwargs.pop('extra_kwargs', {})
+            return kwargs.pop('optimize_queryset', True)
+        return getattr(self.Meta, 'optimize_queryset', True)
+
+    def _setup_context(self, kwargs: Dict[str, Any]) -> None:
+        """Setup context if not provided."""
         if 'context' not in kwargs:
             set_empty_request_in_kwargs(kwargs=kwargs)
 
+    def _setup_action_and_user(self, kwargs: Dict[str, Any]) -> None:
+        """Setup action and user from context if not provided."""
         if not self.action:
-            self._set_action_from_view(kwargs=kwargs)
+            self._set_action_from_view(kwargs)
+
         if not self.user:
             self._set_user_from_request(kwargs)
-        self.extra_kwargs = self._get_extra_kwargs()
-        self._update_extra_kwargs_in_fields()
-        super(AirModelSerializer, self).__init__(*args, **kwargs)
-        self._update_fields()
 
-    def update_or_create(self, instance, validated_data):
-        super_class = super(AirModelSerializer, self)
-        return super_class.create(validated_data) if not instance else super_class.update(instance, validated_data)
+    def update_or_create(self, instance: Optional[Model], validated_data: Dict[str, Any]) -> Model:
+        """Update existing instance or create new one."""
+        if instance is None:
+            return super().create(validated_data)
+        return super().update(instance, validated_data)
 
-    def create(self, validated_data):
+    def create(self, validated_data: Dict[str, Any]) -> Model:
+        """Create new instance."""
         return self.update_or_create(None, validated_data)
 
-    def update(self, instance, validated_data):
+    def update(self, instance: Model, validated_data: Dict[str, Any]) -> Model:
+        """Update existing instance."""
         return self.update_or_create(instance, validated_data)
 
-    def is_valid(self, raise_exception=False):
+    def is_valid(self, raise_exception: bool = False) -> bool:
+        """Validate data with queryset filtering."""
         self._filter_queryset_by_fields()
-        return super(AirModelSerializer, self).is_valid(raise_exception=raise_exception)
+        return super().is_valid(raise_exception=raise_exception)
 
-    def _update_fields(self):
-        if not hasattr(self.Meta, 'model'):
-            return
-        info = model_meta.get_field_info(self.Meta.model)
-        hidden_fields = [field_name for field_name, field in self.fields.items() if
-                         hasattr(field, 'hidden') and getattr(field, 'hidden', True)]
-        for el in hidden_fields:
-            del self.fields[el]
-        for field_name, field in self.fields.items():
-            if not isinstance(field, AirRelatedField):
-                continue
-            field.parent = self
-            model_field: ForeignKey = info.relations[field_name].model_field
-            field_kwargs = field._kwargs
-            if not model_field.editable:
-                field.read_only = True
-                continue
-            if model_field.null:
-                if field_kwargs.get('required') is None:
-                    field.required = False
-                if field_kwargs.get('allow_null') is None:
-                    field.allow_null = True
+    def to_representation(self, instance: Any) -> Dict[str, Any]:
+        """Convert instance to representation with optimization."""
+        if getattr(self, 'parent') is None and self.optimize_queryset:
+            instance = optimize_queryset(instance, self)
+        return super().to_representation(instance)
 
-    def _filter_queryset_by_fields(self):
-        related_fields = self._get_related_fields()
-        for field_name, field in related_fields.items():
-            if not self.initial_data.get(field_name):
-                continue
-            function_name = None
-            if isinstance(field, AirRelatedField):
-                if field.queryset_function_disabled:
-                    return
-                function_name = field.queryset_function_name
-            if not function_name:
-                function_name = f'queryset_{field.field_name}'
-            if hasattr(self.__class__, function_name) and callable(getattr(self.__class__, function_name)):
-                field.queryset = getattr(self.__class__, function_name)(self=self, queryset=field.queryset)
-
-    def _get_related_fields(self):
-        related_fields = dict()
-        for field_name, field in self.fields.items():
-            if type(field) in (AirRelatedField, PrimaryKeyRelatedField):
-                related_fields[field_name] = field
-        return related_fields
-
-    def _get_extra_kwargs(self):
-        data = {'extra_kwargs': self._initial_extra_kwargs}
-        extra_kwargs = ExtraKwargsFactory(meta=self.Meta, data=data, action=self.action).init().extra_kwargs
-        self._delete_custom_extra_kwargs_in_meta()
-        return extra_kwargs
-
-    def _update_extra_kwargs_in_fields(self):
-        for key, value in self.extra_kwargs.items():
-            try:
-                self.fields.fields[key].__dict__.update(value)
-                self.fields.fields[key]._kwargs = {**self.fields.fields[key]._kwargs, **value}
-            except KeyError:
-                continue
-
-    def _delete_custom_extra_kwargs_in_meta(self):
-        if not hasattr(self.Meta, 'extra_kwargs'):
-            return
-        for field_name, field in self.Meta.extra_kwargs.items():
-            field.pop('pk_only', None)
-            field.pop('hidden', None)
-
-    def _set_action_from_view(self, kwargs):
-        context = kwargs.get('context', None)
-        if not context:
-            return
-        view = context.get('view')
-        if view:
-            self.action = view.action
-
-    def _set_user_from_request(self, kwargs):
-        context = kwargs.get('context', None)
-        if not context:
-            return
-        request = context.get('request')
-        if request and hasattr(request, 'user'):
-            user = getattr(request, 'user')
-            if user.is_authenticated:
-                self.user = user
-
-    def __new__(cls, *args, **kwargs):
+    def __new__(cls, *args: Any, **kwargs: Any) -> Union['AirModelSerializer', 'AirListSerializer']:
+        """Handle many=True initialization."""
         if kwargs.pop('many', False):
             if 'context' not in kwargs:
                 set_empty_request_in_kwargs(kwargs=kwargs)
             return cls.many_init(*args, **kwargs)
-        return super().__new__(cls, *args, **kwargs)
+        return super().__new__(cls)
 
-    def to_representation(self, instance):
-        if getattr(self, 'parent') is None and self.optimize_queryset:
-            instance = optimize_queryset(instance, self)
-        return super(AirModelSerializer, self).to_representation(instance)
+    def _update_fields(self) -> None:
+        """Update fields configuration after initialization."""
+        if not hasattr(self.Meta, 'model'):
+            return
+
+        self._remove_hidden_fields()
+        self._configure_air_related_fields()
+
+    def _remove_hidden_fields(self) -> None:
+        """Remove fields marked as hidden."""
+        hidden_fields = [
+            field_name
+            for field_name, field in self.fields.items()
+            if hasattr(field, 'hidden') and getattr(field, 'hidden', True)
+        ]
+
+        for field_name in hidden_fields:
+            del self.fields[field_name]
+
+    def _configure_air_related_fields(self) -> None:
+        """Configure AirRelatedField instances."""
+        if not hasattr(self.Meta, 'model'):
+            return
+
+        info = model_meta.get_field_info(self.Meta.model)
+
+        for field_name, field in self.fields.items():
+            if not isinstance(field, AirRelatedField):
+                continue
+
+            field.parent = self
+
+            if field_name in info.relations:
+                self._configure_related_field(field, info.relations[field_name].model_field)
+
+    def _configure_related_field(self, field: AirRelatedField, model_field: ForeignKey) -> None:
+        """Configure individual related field based on model field."""
+        field_kwargs = getattr(field, '_kwargs', {})
+
+        if not model_field.editable:
+            field.read_only = True
+            return
+
+        if model_field.null:
+            if field_kwargs.get('required') is None:
+                field.required = False
+            if field_kwargs.get('allow_null') is None:
+                field.allow_null = True
+
+    def _filter_queryset_by_fields(self) -> None:
+        """Filter querysets for related fields using custom functions."""
+        related_fields = self._get_related_fields()
+
+        for field_name, field in related_fields.items():
+            if not self.initial_data.get(field_name):
+                continue
+
+            function_name = self._get_queryset_function_name(field)
+            if self._has_queryset_function(function_name):
+                field.queryset = self._call_queryset_function(function_name, field.queryset)
+
+    def _get_related_fields(self) -> Dict[str, Union[AirRelatedField, PrimaryKeyRelatedField]]:
+        """Get all related fields from the serializer."""
+        return {
+            field_name: field
+            for field_name, field in self.fields.items()
+            if isinstance(field, (AirRelatedField, PrimaryKeyRelatedField))
+        }
+
+    def _get_queryset_function_name(self, field: Union[AirRelatedField, PrimaryKeyRelatedField]) -> str:
+        """Get queryset function name for the field."""
+        if isinstance(field, AirRelatedField):
+            if field.queryset_function_disabled:
+                return ''
+            if field.queryset_function_name:
+                return field.queryset_function_name
+
+        return f'queryset_{field.field_name}'
+
+    def _has_queryset_function(self, function_name: str) -> bool:
+        """Check if queryset function exists and is callable."""
+        return (
+            function_name
+            and hasattr(self.__class__, function_name)
+            and callable(getattr(self.__class__, function_name))
+        )
+
+    def _call_queryset_function(self, function_name: str, queryset: Any) -> Any:
+        """Call queryset function with current context."""
+        return getattr(self.__class__, function_name)(self=self, queryset=queryset)
+
+    def _get_extra_kwargs(self) -> Dict[str, Any]:
+        """Get processed extra_kwargs using ExtraKwargsFactory."""
+        data = {'extra_kwargs': self._initial_extra_kwargs}
+        extra_kwargs = ExtraKwargsFactory(meta=self.Meta, data=data, action=self.action).init().extra_kwargs
+
+        self._clean_meta_extra_kwargs()
+        return extra_kwargs
+
+    def _update_extra_kwargs_in_fields(self) -> None:
+        """Update field instances with extra_kwargs values."""
+        for field_name, field_kwargs in self.extra_kwargs.items():
+            try:
+                field = self.fields.fields[field_name]
+                field.__dict__.update(field_kwargs)
+                field._kwargs = {**getattr(field, '_kwargs', {}), **field_kwargs}
+            except KeyError:
+                # Field doesn't exist, skip
+                continue
+
+    def _clean_meta_extra_kwargs(self) -> None:
+        """Remove custom extra_kwargs from Meta to prevent conflicts."""
+        if not hasattr(self.Meta, 'extra_kwargs'):
+            return
+
+        custom_kwargs = ['pk_only', 'hidden']
+
+        for field_name, field_kwargs in self.Meta.extra_kwargs.items():
+            for custom_kwarg in custom_kwargs:
+                field_kwargs.pop(custom_kwarg, None)
+
+    def _set_action_from_view(self, kwargs: Dict[str, Any]) -> None:
+        """Set action from view context."""
+        context = kwargs.get('context')
+        if not context:
+            return
+
+        view = context.get('view')
+        if view and hasattr(view, 'action'):
+            self.action = view.action
+
+    def _set_user_from_request(self, kwargs: Dict[str, Any]) -> None:
+        """Set user from request context."""
+        context = kwargs.get('context')
+        if not context:
+            return
+
+        request = context.get('request')
+        if not request or not hasattr(request, 'user'):
+            return
+
+        user = request.user
+        if hasattr(user, 'is_authenticated') and user.is_authenticated:
+            self.user = user
 
 
 class AirListSerializer(serializers.ListSerializer):
-    def __init__(self, *args, **list_kwargs):
-        self.preload_objects = list_kwargs.pop('preload_objects', None)
-        super(AirListSerializer, self).__init__(*args, **list_kwargs)
-        self._preload_objects_manager = None
+    """
+    Enhanced ListSerializer with preloading support.
+    """
 
-    def is_valid(self, raise_exception=False):
-        if self.preload_objects is not False and getattr(self.child, 'preload_objects', None) is not False:
+    def __init__(self, *args: Any, **kwargs: Any):
+        self.preload_objects: Optional[bool] = kwargs.pop('preload_objects', None)
+        super().__init__(*args, **kwargs)
+        self._preload_objects_manager: Optional[PreloadObjectsManager] = None
+
+    def is_valid(self, raise_exception: bool = False) -> bool:
+        """Validate data with preload manager initialization."""
+        if self._should_initialize_preload_manager():
             self._preload_objects_manager = PreloadObjectsManager.get_preload_objects_manager(self).init()
-        return super(AirListSerializer, self).is_valid(raise_exception=raise_exception)
+        return super().is_valid(raise_exception=raise_exception)
 
-    def update(self, instance, validated_data):
-        super(AirListSerializer, self).update(instance, validated_data)
+    def _should_initialize_preload_manager(self) -> bool:
+        """Check if preload manager should be initialized."""
+        return self.preload_objects is not False and getattr(self.child, 'preload_objects', None) is not False
+
+    def update(self, instance: List[Model], validated_data: List[Dict[str, Any]]) -> List[Model]:
+        """Update list of instances."""
+        return super().update(instance, validated_data)
 
 
 class AirEmptySerializer(AirSerializer):
+    """
+    Empty serializer base class for serializers without create/update logic.
+    """
 
-    def __init__(self, *args, **kwargs):
-        super(AirEmptySerializer, self).__init__(*args, **kwargs)
+    def update(self, instance: Any, validated_data: Dict[str, Any]) -> Any:
+        """Update is not implemented for empty serializer."""
+        raise NotImplementedError('Update is not implemented for AirEmptySerializer')
 
-    def update(self, instance, validated_data):
-        raise NotImplemented()
-
-    def create(self, validated_data):
-        raise NotImplemented()
+    def create(self, validated_data: Dict[str, Any]) -> Any:
+        """Create is not implemented for empty serializer."""
+        raise NotImplementedError('Create is not implemented for AirEmptySerializer')
 
 
 class AirDynamicSerializer(AirEmptySerializer):
-    def __init__(self, *args, **kwargs):
+    """
+    Dynamic serializer that accepts field definitions at runtime.
+    """
+
+    def __init__(self, *args: Any, **kwargs: Any):
         values = kwargs.pop('values')
-        if not type(values) == dict:
+
+        if not isinstance(values, dict):
             raise TypeError('values should be dict.')
-        for key, value in values.items():
-            self.fields.fields[key] = value
-            self.fields.fields[key].field_name = key
-            self.fields.fields[key].source_attrs = [key]
-        super(AirDynamicSerializer, self).__init__(*args, **kwargs)
+
+        self._add_dynamic_fields(values)
+        super().__init__(*args, **kwargs)
+
+    def _add_dynamic_fields(self, values: Dict[str, serializers.Field]) -> None:
+        """Add dynamic fields to the serializer."""
+        for field_name, field_instance in values.items():
+            self.fields.fields[field_name] = field_instance
+            field_instance.field_name = field_name
+            field_instance.source_attrs = [field_name]
 
 
 class AirDataclassSerializer(DataclassSerializer):
+    """
+    Enhanced DataclassSerializer with improved validation and representation.
+    """
+
     def to_internal_value(self, data: Dict[str, Any]) -> T:
-        instance = super(AirDataclassSerializer, self).to_internal_value(data)
-        dataclass = self.Meta.dataclass
-        for key in instance.__dict__.keys():
-            if getattr(instance, key) == empty:
-                if self.instance:
-                    value = getattr(self.instance, key, None)
-                else:
-                    value = getattr(dataclass, key, None)
-                setattr(instance, key, value)
+        """Convert data to dataclass with empty field handling."""
+        instance = super().to_internal_value(data)
+        self._handle_empty_fields(instance)
         return instance
 
-    def run_validation(self, data=empty):
-        if self.parent and getattr(self.parent, 'instance', None):
-            self.instance = getattr(self.parent.instance, self.source, None)
-        return super(AirDataclassSerializer, self).run_validation(data)
+    def _handle_empty_fields(self, instance: T) -> None:
+        """Handle empty fields by setting default values."""
+        dataclass = self.Meta.dataclass
 
-    def to_representation(self, instance):
-        if instance is not None:
-            if isinstance(instance, dict):
-                for el in self._writable_fields:
-                    if el.field_name not in instance:
-                        instance[el.field_name] = None
-        return super(AirDataclassSerializer, self).to_representation(instance)
+        for field_name in instance.__dict__.keys():
+            if getattr(instance, field_name) == empty:
+                default_value = self._get_default_field_value(dataclass, field_name)
+                setattr(instance, field_name, default_value)
+
+    def _get_default_field_value(self, dataclass: Type[T], field_name: str) -> Any:
+        """Get default value for a field."""
+        if self.instance:
+            return getattr(self.instance, field_name, None)
+        return getattr(dataclass, field_name, None)
+
+    def run_validation(self, data: Any = empty) -> T:
+        """Run validation with parent instance handling."""
+        if self._should_set_instance_from_parent():
+            self.instance = getattr(self.parent.instance, self.source, None)
+        return super().run_validation(data)
+
+    def _should_set_instance_from_parent(self) -> bool:
+        """Check if instance should be set from parent."""
+        return self.parent and getattr(self.parent, 'instance', None) and hasattr(self, 'source')
+
+    def to_representation(self, instance: Union[Dict[str, Any], T, None]) -> Dict[str, Any]:
+        """Convert instance to representation with null field handling."""
+        if instance is not None and isinstance(instance, dict):
+            self._ensure_all_fields_in_dict(instance)
+        return super().to_representation(instance)
+
+    def _ensure_all_fields_in_dict(self, instance: Dict[str, Any]) -> None:
+        """Ensure all writable fields are present in dict instance."""
+        for field in self._writable_fields:
+            if field.field_name not in instance:
+                instance[field.field_name] = None

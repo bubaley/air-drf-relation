@@ -1,25 +1,61 @@
+from datetime import datetime
 from functools import wraps
+from typing import Any, Callable, TypeVar
 
 from django import db
-from datetime import datetime
+
+F = TypeVar('F', bound=Callable[..., Any])
 
 
-def queries_count(func):
+def queries_count(func: F) -> F:
+    """
+    Decorator that tracks database queries count and execution time for a function.
+
+    Args:
+        func: Function to be decorated
+
+    Returns:
+        Decorated function with queries tracking printed to console
+    """
+
     @wraps(func)
-    def inner(*args, **kwargs):
+    def wrapper(*args, **kwargs):
         init_count = len(db.connection.queries)
         start_time = datetime.utcnow()
-        res = func(*args, **kwargs)
-        end_time = datetime.utcnow()
-        end_count = len(db.connection.queries)
-        values = [
-            datetime.utcnow().strftime("%H:%M:%S.%f"),
-            f'{func.__module__}, {func.__qualname__}',
-            f'count: {end_count - init_count}',
-            f'range: {init_count} -> {end_count}',
-            f'duration: {(end_time - start_time).total_seconds()}s.'
-        ]
-        print(' | '.join(values))
-        return res
 
-    return inner
+        try:
+            result = func(*args, **kwargs)
+
+            end_time = datetime.utcnow()
+            end_count = len(db.connection.queries)
+
+            queries_executed = end_count - init_count
+            duration = (end_time - start_time).total_seconds()
+            timestamp = start_time.strftime('%H:%M:%S.%f')[:-3]
+
+            function_name = f'{func.__module__}.{func.__qualname__}'
+
+            print(
+                f'[{timestamp}] {function_name} | '
+                f'Queries: {queries_executed} | '
+                f'Range: {init_count} → {end_count} | '
+                f'Duration: {duration:.3f}s'
+            )
+
+            return result
+
+        except Exception as e:
+            end_time = datetime.utcnow()
+            end_count = len(db.connection.queries)
+            queries_executed = end_count - init_count
+            duration = (end_time - start_time).total_seconds()
+
+            print(
+                f'ERROR in {func.__module__}.{func.__qualname__} | '
+                f'Queries before error: {queries_executed} | '
+                f'Duration before error: {duration:.3f}s | '
+                f'Error: {str(e)}'
+            )
+            raise
+
+    return wrapper
