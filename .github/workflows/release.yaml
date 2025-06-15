@@ -97,5 +97,5 @@ jobs:
         run: uv build
 
       - name: Publish to PyPI
-        if: secrets.PYPI_API_TOKEN
+        if: ${{ secrets.PYPI_API_TOKEN }}
         run: uv publish --token "${{ secrets.PYPI_API_TOKEN }}"
