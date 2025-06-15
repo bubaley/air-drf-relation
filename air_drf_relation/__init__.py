@@ -5,7 +5,7 @@ This package provides enhanced serializers and fields for Django REST Framework
 with features like queryset optimization and preloading.
 """
 
-__version__ = '1.0.2'
+__version__ = '1.0.3'
 
 __title__ = 'air-drf-relation'
 

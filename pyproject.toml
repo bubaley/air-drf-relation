@@ -5,7 +5,7 @@ requires = [ "hatchling" ]
 
 [project]
 name = "air-drf-relation"
-version = "1.0.2"
+version = "1.0.3"
 description = "Enhanced Django REST Framework serializers with advanced relation handling, queryset optimization, and type safety"
 readme = "README.md"
 keywords = [
