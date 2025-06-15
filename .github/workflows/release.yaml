@@ -45,7 +45,7 @@ jobs:
         run: sed -i "s/^version = \".*\"/version = \"$VERSION\"/" pyproject.toml
 
       - name: Update version in Python file
-        run: sed -i "s/__version__ = \".*\"/__version__ = \"$VERSION\"/" air_drf_relation/__init__.py
+        run: sed -i "s/__version__ = [\"'].*[\"']/__version__ = '$VERSION'/" air_drf_relation/__init__.py
 
       - name: Commit all changes together
         if: ${{ steps.changelog.outputs.skipped == 'false' }}
@@ -67,66 +67,35 @@ jobs:
           body: ${{ steps.changelog.outputs.clean_changelog }}
           token: ${{ secrets.GITHUB_TOKEN }}
 
-  # build-and-push:
-  #   name: Build & Push Docker Image
-  #   runs-on: ubuntu-latest
-  #   needs: release
-  #   if: ${{ needs.release.outputs.skipped == 'false' }}
-  #   permissions:
-  #     contents: read
-  #   steps:
-  #     - name: Checkout repository
-  #       uses: actions/checkout@v4
-  #       with:
-  #         fetch-depth: 0
+  build-and-push:
+    name: Build & Push Docker Image
+    runs-on: ubuntu-latest
+    needs: release
+    if: ${{ needs.release.outputs.skipped == 'false' }}
+    permissions:
+      contents: read
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
 
-  #     - name: Get version from release
-  #       id: version
-  #       run: |
-  #         RAW_VERSION=${{ needs.release.outputs.tag }}
-  #         VERSION="${RAW_VERSION#v}"
-  #         echo "version=${VERSION}" >> $GITHUB_OUTPUT
-  #         echo "Version: $VERSION"
+      - name: Install uv
+        uses: astral-sh/setup-uv@v6
+        with:
+          enable-cache: true
 
-  #     - name: Login to Yandex Cloud Container Registry
-  #       uses: yc-actions/yc-cr-login@v3
-  #       with:
-  #         yc-sa-json-credentials: ${{ secrets.YC_KEY_JSON }}
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version-file: "pyproject.toml"
+      
+      - name: Install packages
+        run: uv sync --frozen --no-dev
 
-  #     - name: Extract metadata
-  #       id: meta
-  #       uses: docker/metadata-action@v5
-  #       with:
-  #         images: ${{ env.REGISTRY }}/${{ secrets.YC_REGISTRY }}/${{ env.IMAGE_NAME }}
-  #         tags: |
-  #           type=raw,value=${{ steps.version.outputs.version }},prefix=,suffix=
-  #           type=raw,value=latest
+      - name: Build package
+        run: uv build
 
-  #     - name: Set up Docker Buildx
-  #       uses: docker/setup-buildx-action@v3
-  #       with:
-  #         platforms: linux/amd64,linux/arm64
-
-  #     - name: Build and push Docker image
-  #       uses: docker/build-push-action@v6
-  #       with:
-  #         context: .
-  #         file: ./Dockerfile
-  #         platforms: linux/amd64,linux/arm64
-  #         push: true
-  #         tags: ${{ steps.meta.outputs.tags }}
-  #         cache-from: type=gha,scope=${{ github.ref }}-${{ github.workflow }}
-  #         cache-to: type=gha,mode=max,scope=${{ github.ref }}-${{ github.workflow }}
-  #         build-args: |
-  #           BUILDKIT_INLINE_CACHE=1
-
-  #     - name: Docker info
-  #       run: |
-  #         docker version
-  #         docker info
-  #         docker buildx inspect --bootstrap
-
-  #     - name: Image push confirmation
-  #       run: |
-  #         echo "Successfully pushed images:"
-  #         echo "${{ steps.meta.outputs.tags }}" | tr ',' '\n' | sed 's/^/- /'
+      - name: Publish to PyPI
+        if: secrets.PYPI_API_TOKEN
+        run: uv publish --token "${{ secrets.PYPI_API_TOKEN }}"
