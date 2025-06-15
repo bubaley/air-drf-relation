@@ -89,7 +89,7 @@ jobs:
         uses: actions/setup-python@v5
         with:
           python-version-file: "pyproject.toml"
-      
+
       - name: Install packages
         run: uv sync --frozen --no-dev
 
