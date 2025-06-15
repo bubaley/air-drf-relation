@@ -31,7 +31,8 @@ class BookSerializer(AirModelSerializer):
     def queryset_author(self, queryset):
         return queryset.filter(active=True)
 
-    def filter_city_by_active(self, queryset):
+    @staticmethod
+    def filter_city_by_active(queryset):  # without self
         return queryset.filter(active=True)
 
     class Meta:
@@ -41,7 +42,7 @@ class BookSerializer(AirModelSerializer):
 
 class BookReadOnlySerializer(AirModelSerializer):
     author = AirRelatedField(AuthorSerializer, read_only=True)
-    city = AirRelatedField(CitySerializer, read_only=True)
+    city = CitySerializer(read_only=True)
 
     class Meta:
         model = Book
