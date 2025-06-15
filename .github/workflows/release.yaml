@@ -97,5 +97,9 @@ jobs:
         run: uv build
 
       - name: Publish to PyPI
-        if: ${{ secrets.PYPI_API_TOKEN }}
-        run: uv publish --token "${{ secrets.PYPI_API_TOKEN }}"
+        run: |
+          if [ -n "${{ secrets.PYPI_API_TOKEN }}" ]; then
+            uv publish --token "${{ secrets.PYPI_API_TOKEN }}"
+          else
+            echo "No PyPI token provided, skipping publish."
+          fi
